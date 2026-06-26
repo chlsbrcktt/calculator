@@ -1,0 +1,151 @@
+.graph-panel {
+  position: relative;
+  height: 52vh;
+  flex-shrink: 0;
+  background: #ffffff;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Toolbar */
+.graph-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 16px 8px;
+  border-bottom: 1px solid #e2e8f0;
+  background: #f8fafc;
+}
+
+.graph-btn {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 5px;
+  color: #2563eb;
+  padding: 4px 11px;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.4;
+  transition: background 0.12s, border-color 0.12s;
+  cursor: pointer;
+}
+
+.graph-btn:hover {
+  background: #eff6ff;
+  border-color: #bfdbfe;
+}
+
+.graph-toolbar-sep {
+  width: 1px;
+  height: 16px;
+  background: #e2e8f0;
+  flex-shrink: 0;
+}
+
+.kp-toggle {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  color: #64748b;
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.kp-toggle input[type="checkbox"] {
+  width: 13px;
+  height: 13px;
+  cursor: pointer;
+  accent-color: #3b82f6;
+  flex-shrink: 0;
+}
+
+.graph-hint {
+  margin-left: auto;
+  font-size: 11px;
+  color: #cbd5e1;
+  user-select: none;
+}
+
+/* Canvas */
+.graph-canvas-wrap {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+  transition: opacity 0.2s;
+}
+
+.graph-canvas-wrap.faded {
+  opacity: 0.2;
+}
+
+.graph-canvas-inner {
+  position: absolute;
+  top: 8px;
+  right: 16px;
+  bottom: 12px;
+  left: 16px;
+  cursor: crosshair;
+}
+
+/* Overlays */
+.graph-status {
+  position: absolute;
+  top: 50px;
+  right: 20px;
+  font-size: 11px;
+  color: #94a3b8;
+  background: rgba(248, 250, 252, 0.9);
+  padding: 3px 10px;
+  border-radius: 4px;
+  z-index: 10;
+  pointer-events: none;
+  border: 1px solid #e2e8f0;
+}
+
+.graph-error {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 6px;
+  color: #dc2626;
+  padding: 8px 14px;
+  font-size: 13px;
+  margin: 8px 16px 0;
+  font-family: ui-monospace, monospace;
+}
+
+.graph-empty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #cbd5e1;
+  font-size: 14px;
+  pointer-events: none;
+}
+
+/* Derivative sub-charts */
+.deriv-panel {
+  height: 52vh;
+  flex-shrink: 0;
+  background: #ffffff;
+  border-top: 2px solid #e2e8f0;
+  display: flex;
+  flex-direction: column;
+}
+
+.deriv-header {
+  padding: 7px 16px 6px;
+  border-bottom: 1px solid #e2e8f0;
+  background: #f8fafc;
+  flex-shrink: 0;
+}
+
+.deriv-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: #475569;
+  font-family: ui-monospace, Consolas, monospace;
+  letter-spacing: 0.02em;
+}
