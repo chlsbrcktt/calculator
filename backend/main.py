@@ -178,6 +178,10 @@ def analyze_expression(raw_expr: str) -> dict:
         "inverse": None,
         "steps": [],
         "linear_forms": None,
+        "vertical_asymptotes": [],
+        "horizontal_asymptotes": [],
+        "vertical_asymptote_steps": "",
+        "horizontal_asymptote_steps": "",
     }
 
     # Expanded form
@@ -253,10 +257,209 @@ def analyze_expression(raw_expr: str) -> dict:
         if degree is not None and degree % 2 == 1:
             result["range"] = r"\mathbb{R}"
 
+    # Asymptotes
+    asym = _find_asymptotes(expr_sympy, x)
+    result["vertical_asymptotes"] = asym["vertical"]
+    result["horizontal_asymptotes"] = asym["horizontal"]
+    result["vertical_asymptote_steps"] = asym["vertical_steps"]
+    result["horizontal_asymptote_steps"] = asym["horizontal_steps"]
+
     # Inverse
     result["inverse"] = _compute_inverse(expr_sympy, x, degree)
 
     return result
+
+
+def _find_asymptotes(expr_sympy, x) -> dict:
+    vert, horiz = [], []
+
+    # Vertical asymptotes — rational functions: denominator zeros where numerator ≠ 0
+    try:
+        numer, denom = sp.fraction(sp.cancel(expr_sympy))
+        if denom not in (sp.Integer(1), sp.Integer(-1)):
+            for z in solve(denom, x):
+                if not z.is_real:
+                    continue
+                try:
+                    if numer.subs(x, z) != 0:
+                        vert.append({"x": _latex_expr(z)})
+                except Exception:
+                    vert.append({"x": _latex_expr(z)})
+    except Exception:
+        pass
+
+    # Vertical asymptotes — non-rational (log, etc.): domain boundaries where limit → ±∞
+    if not vert:
+        try:
+            domain = continuous_domain(expr_sympy, x, S.Reals)
+            bps = set()
+
+            def _collect_bps(dom):
+                if isinstance(dom, sp.Interval):
+                    if dom.inf.is_finite and dom.inf.is_real:
+                        bps.add(dom.inf)
+                    if dom.sup.is_finite and dom.sup.is_real:
+                        bps.add(dom.sup)
+                elif hasattr(dom, 'args'):
+                    for arg in dom.args:
+                        _collect_bps(arg)
+
+            _collect_bps(domain)
+            for pt in bps:
+                try:
+                    for side in ('+', '-'):
+                        lv = limit(expr_sympy, x, pt, side)
+                        if lv in (oo, -oo):
+                            vert.append({"x": _latex_expr(pt)})
+                            break
+                except Exception:
+                    pass
+        except Exception:
+            pass
+
+    # Horizontal asymptotes — finite limits as x → ±∞
+    try:
+        lim_pos = limit(expr_sympy, x, oo)
+        lim_neg = limit(expr_sympy, x, -oo)
+        seen = []
+        for lv in (lim_pos, lim_neg):
+            try:
+                f = float(lv)
+                if not (f == float('inf') or f == float('-inf')):
+                    if not any(float(s["_val"]) == f for s in seen):
+                        seen.append({"y": _latex_expr(lv), "_val": lv})
+            except (TypeError, ValueError):
+                pass
+        horiz = [{"y": s["y"]} for s in seen]
+    except Exception:
+        pass
+
+    return {
+        "vertical": vert,
+        "horizontal": horiz,
+        "vertical_steps": _vertical_asymptote_steps(expr_sympy, x, vert),
+        "horizontal_steps": _horizontal_asymptote_steps(expr_sympy, x, horiz),
+    }
+
+
+def _vertical_asymptote_steps(expr_sympy, x, vert) -> str:
+    lines = []
+    try:
+        numer, denom = sp.fraction(sp.cancel(expr_sympy))
+        is_rational = denom not in (sp.Integer(1), sp.Integer(-1))
+    except Exception:
+        is_rational = False
+
+    lines.append("**Vertical asymptotes** occur where the function is undefined and the output grows without bound.")
+
+    if is_rational:
+        try:
+            numer, denom = sp.fraction(sp.cancel(expr_sympy))
+            lines.append(
+                f"Write in rational form:\n\n$$f(x) = \\frac{{{_latex_expr(numer)}}}{{{_latex_expr(denom)}}}$$"
+            )
+            lines.append(f"**Step 1 — Set the denominator equal to zero:**\n\n$${_latex_expr(denom)} = 0$$")
+            denom_zeros = [z for z in solve(denom, x) if z.is_real]
+            if denom_zeros:
+                zero_strs = ", ".join(f"$x = {_latex_expr(z)}$" for z in denom_zeros)
+                lines.append(f"**Step 2 — Solve:** {zero_strs}")
+                lines.append("**Step 3 — Confirm the numerator is non-zero there** (otherwise it's a hole, not an asymptote):")
+                for z in denom_zeros:
+                    try:
+                        nv = simplify(numer.subs(x, z))
+                        if nv != 0:
+                            lines.append(f"At $x = {_latex_expr(z)}$: numerator $= {_latex_expr(nv)} \\neq 0$ → **vertical asymptote** ✓")
+                        else:
+                            lines.append(f"At $x = {_latex_expr(z)}$: numerator $= 0$ → removable hole, not an asymptote")
+                    except Exception:
+                        lines.append(f"At $x = {_latex_expr(z)}$: → **vertical asymptote**")
+            else:
+                lines.append("The denominator has no real zeros → **no vertical asymptotes**.")
+        except Exception:
+            pass
+    else:
+        lines.append(
+            "For non-rational functions (e.g. logarithms), check where the function is undefined "
+            "and whether the limit is $\\pm\\infty$ there."
+        )
+        if vert:
+            for va in vert:
+                try:
+                    pt = sp.sympify(va["x"])
+                    lv = limit(expr_sympy, x, pt, '+')
+                    lines.append(f"$\\lim_{{x \\to {va['x']}^+}} f(x) = {_latex_expr(lv)}$ → **vertical asymptote at $x = {va['x']}$**")
+                except Exception:
+                    lines.append(f"**Vertical asymptote at $x = {va['x']}$**")
+
+    if vert:
+        va_strs = ", ".join(f"$x = {va['x']}$" for va in vert)
+        lines.append(f"**Vertical asymptote(s): {va_strs}**")
+    else:
+        lines.append("**Result: No vertical asymptotes.**")
+
+    return "\n\n".join(lines)
+
+
+def _horizontal_asymptote_steps(expr_sympy, x, horiz) -> str:
+    lines = []
+    lines.append("**Horizontal asymptotes** describe the value $f(x)$ approaches as $x \\to \\pm\\infty$.")
+
+    try:
+        numer, denom = sp.fraction(sp.cancel(expr_sympy))
+        is_rational = denom not in (sp.Integer(1), sp.Integer(-1))
+    except Exception:
+        is_rational = False
+
+    if is_rational:
+        try:
+            numer, denom = sp.fraction(sp.cancel(expr_sympy))
+            poly_n = sp.Poly(numer, x) if numer.is_polynomial(x) else None
+            poly_d = sp.Poly(denom, x) if denom.is_polynomial(x) else None
+            if poly_n and poly_d:
+                dn, dd = int(poly_n.degree()), int(poly_d.degree())
+                ln = sp.nsimplify(poly_n.nth(dn))
+                ld = sp.nsimplify(poly_d.nth(dd))
+                lines.append(
+                    f"This is a rational function. Compare degrees:\n\n"
+                    f"- Numerator degree: $n = {dn}$, leading coefficient $= {_latex_expr(ln)}$\n\n"
+                    f"- Denominator degree: $d = {dd}$, leading coefficient $= {_latex_expr(ld)}$"
+                )
+                if dn < dd:
+                    lines.append("Since $n < d$: the x-axis is the horizontal asymptote.\n\n$$y = 0$$")
+                elif dn == dd:
+                    ratio = sp.nsimplify(ln / ld)
+                    lines.append(
+                        f"Since $n = d$: the horizontal asymptote is the ratio of leading coefficients.\n\n"
+                        f"$$y = \\frac{{{_latex_expr(ln)}}}{{{_latex_expr(ld)}}} = {_latex_expr(ratio)}$$"
+                    )
+                else:
+                    lines.append(
+                        "Since $n > d$: there is **no horizontal asymptote** — the function grows without bound. "
+                        "There may be an oblique (slant) asymptote instead."
+                    )
+        except Exception:
+            pass
+    else:
+        lines.append("Compute the limits at infinity:")
+        try:
+            lim_pos = limit(expr_sympy, x, oo)
+            lim_neg = limit(expr_sympy, x, -oo)
+            def fmt(v):
+                if v == oo: return "+\\infty"
+                if v == -oo: return "-\\infty"
+                return _latex_expr(v)
+            lines.append(f"$$\\lim_{{x \\to +\\infty}} f(x) = {fmt(lim_pos)}$$")
+            lines.append(f"$$\\lim_{{x \\to -\\infty}} f(x) = {fmt(lim_neg)}$$")
+        except Exception:
+            pass
+
+    if horiz:
+        ha_strs = ", ".join(f"$y = {ha['y']}$" for ha in horiz)
+        lines.append(f"**Horizontal asymptote(s): {ha_strs}**")
+    else:
+        lines.append("**Result: No horizontal asymptotes.**")
+
+    return "\n\n".join(lines)
 
 
 def _classify(degree: Optional[int], expr, x) -> str:
@@ -350,7 +553,199 @@ def _end_behavior_text(expr_sympy, degree, poly, x) -> str:
     return "\n\n".join(lines)
 
 
+def _poly_factor_steps(poly_sym, x) -> str:
+    """Brief self-contained factoring walkthrough for a single polynomial."""
+    poly_exp = sp.expand(poly_sym)
+    poly_fac = sp.factor(poly_exp)
+
+    if poly_fac == poly_exp:
+        return f"Already in factored form: ${_latex_expr(poly_fac)}$"
+
+    try:
+        p = sp.Poly(poly_exp, x)
+        deg = int(p.degree())
+    except Exception:
+        return f"$$= {_latex_expr(poly_fac)}$$"
+
+    lines = []
+    a_coef = sp.nsimplify(p.nth(deg)) if deg >= 1 else sp.Integer(1)
+    a_f = float(a_coef)
+
+    # Factor out negative leading coefficient first
+    working_exp = poly_exp
+    factored_prefix = ""
+    if deg == 2 and a_f < 0:
+        if a_coef == -1:
+            working_exp = sp.expand(-poly_exp)
+            factored_prefix = "-1 \\cdot "
+            lines.append(f"Factor out $-1$:\n\n$$-1 \\cdot ({_latex_expr(working_exp)})$$")
+        else:
+            gcf = sp.nsimplify(-a_coef)
+            working_exp = sp.expand(poly_exp / (-gcf))
+            factored_prefix = f"{_latex_expr(-gcf)} \\cdot "
+            lines.append(f"Factor out ${_latex_expr(-gcf)}$:\n\n$${_latex_expr(-gcf)} \\cdot ({_latex_expr(working_exp)})$$")
+
+    if deg == 2:
+        try:
+            wp = sp.Poly(working_exp, x)
+            wa = sp.nsimplify(wp.nth(2))
+            wb = sp.nsimplify(wp.nth(1))
+            wc = sp.nsimplify(wp.nth(0))
+            wa_f, wb_f, wc_f = float(wa), float(wb), float(wc)
+            working_fac = sp.factor(working_exp)
+
+            # Difference of squares: b=0, c<0, a>0
+            if wb_f == 0 and wc_f < 0 and wa_f > 0:
+                sqrt_a = sp.sqrt(wa)
+                sqrt_mc = sp.sqrt(-wc)
+                if sqrt_a.is_rational and sqrt_mc.is_rational:
+                    A = f"{_latex_expr(sqrt_a)}x" if sqrt_a != 1 else "x"
+                    B = _latex_expr(sqrt_mc)
+                    lines.append(
+                        f"Recognize **difference of squares**: $A^2 - B^2 = (A+B)(A-B)$\n\n"
+                        f"$A = {A}$, $B = {B}$\n\n"
+                        f"$$({_latex_expr(working_exp)}) = ({A}+{B})({A}-{B}) = {_latex_expr(working_fac)}$$"
+                    )
+
+            # Perfect square trinomial: discriminant = 0
+            elif wb**2 - 4*wa*wc == 0:
+                sqrt_a2 = sp.sqrt(wa)
+                sqrt_c2 = sp.sqrt(abs(wc))
+                A_str = "x" if sqrt_a2 == 1 else f"{_latex_expr(sqrt_a2)}x"
+                sign_str = "+" if wb_f > 0 else "-"
+                lines.append(
+                    f"Recognize **perfect square trinomial**: $(A \\pm B)^2 = A^2 \\pm 2AB + B^2$\n\n"
+                    f"$A = {A_str}$, $B = {_latex_expr(sqrt_c2)}$\n\n"
+                    f"$$({_latex_expr(working_exp)}) = ({A_str} {sign_str} {_latex_expr(sqrt_c2)})^2$$"
+                )
+
+            # Monic with integer coefficients: find-two-numbers
+            elif wa_f == 1 and wb_f == int(wb_f) and wc_f == int(wc_f):
+                b_int, c_int = int(wb_f), int(wc_f)
+                lines.append(
+                    f"**Monic quadratic** ($a=1$): find $p, q$ with "
+                    f"$p \\cdot q = {c_int}$ and $p + q = {b_int}$:"
+                )
+                found, seen = None, set()
+                for pv in range(-abs(c_int)-1, abs(c_int)+2):
+                    if pv == 0 or c_int % pv != 0:
+                        continue
+                    qv = c_int // pv
+                    key = tuple(sorted((pv, qv)))
+                    if key in seen:
+                        continue
+                    seen.add(key)
+                    mark = " ✓" if pv + qv == b_int else ""
+                    lines.append(f"$({pv},\\ {qv})$: product $= {pv*qv}$, sum $= {pv+qv}${mark}")
+                    if pv + qv == b_int and found is None:
+                        found = (pv, qv)
+                    if len(seen) >= 6:
+                        break
+                if found:
+                    pv, qv = found
+                    lines.append(f"$$({_latex_expr(working_exp)}) = (x {'+' if pv>=0 else ''}{pv})(x {'+' if qv>=0 else ''}{qv})$$")
+
+            # Non-monic: AC method
+            else:
+                ac = wa * wc
+                lines.append(
+                    f"**AC method** ($a = {_latex_expr(wa)}$):\n\n"
+                    f"$AC = {_latex_expr(wa)} \\times {_latex_expr(wc)} = {_latex_expr(ac)}$\n\n"
+                    f"Find $m, n$ with $m \\cdot n = {_latex_expr(ac)}$ and $m + n = {_latex_expr(wb)}$:"
+                )
+                if float(ac) == int(float(ac)) and wb_f == int(wb_f):
+                    ac_int, b_int = int(float(ac)), int(wb_f)
+                    found_mn = None
+                    for mv in range(-abs(ac_int)-1, abs(ac_int)+2):
+                        if mv == 0 or ac_int % mv != 0:
+                            continue
+                        nv = ac_int // mv
+                        if mv + nv == b_int:
+                            found_mn = (mv, nv)
+                            break
+                    if found_mn:
+                        mv, nv = found_mn
+                        lines.append(
+                            f"$m = {mv}$, $n = {nv}$\n\n"
+                            f"Split middle term and factor by grouping:\n\n"
+                            f"$$({_latex_expr(working_exp)}) = {_latex_expr(working_fac)}$$"
+                        )
+                    else:
+                        lines.append(f"$$({_latex_expr(working_exp)}) = {_latex_expr(working_fac)}$$")
+                else:
+                    lines.append(f"$$({_latex_expr(working_exp)}) = {_latex_expr(working_fac)}$$")
+        except Exception:
+            pass
+
+    lines.append(f"**Result:** $${_latex_expr(poly_fac)}$$")
+    return "\n\n".join(lines)
+
+
+def _rational_factoring_detail(expr_sympy, factored, x) -> str:
+    """Step-by-step for factoring a rational function: factor num, factor denom, cancel."""
+    # Use the ORIGINAL (uncancelled) fraction to show all factors before cancellation
+    numer_raw, denom_raw = sp.fraction(expr_sympy)
+    numer_exp = sp.expand(numer_raw)
+    denom_exp = sp.expand(denom_raw)
+    numer_fac = sp.factor(numer_raw)
+    denom_fac = sp.factor(denom_raw)
+
+    lines = []
+    lines.append(
+        f"**Starting expression:**\n\n"
+        f"$$f(x) = \\frac{{{_latex_expr(numer_exp)}}}{{{_latex_expr(denom_exp)}}}$$"
+    )
+
+    # Step 1: Factor numerator
+    num_steps = _poly_factor_steps(numer_raw, x)
+    lines.append(f"**Step 1 — Factor the numerator** $({_latex_expr(numer_exp)})$:\n\n{num_steps}")
+
+    # Step 2: Factor denominator
+    den_steps = _poly_factor_steps(denom_raw, x)
+    lines.append(f"**Step 2 — Factor the denominator** $({_latex_expr(denom_exp)})$:\n\n{den_steps}")
+
+    # Step 3: Rewrite as factored rational
+    lines.append(
+        f"**Step 3 — Rewrite with factored numerator and denominator:**\n\n"
+        f"$$f(x) = \\frac{{{_latex_expr(numer_fac)}}}{{{_latex_expr(denom_fac)}}}$$"
+    )
+
+    # Step 4: Cancel common factors
+    try:
+        common = sp.gcd(numer_fac, denom_fac)
+        if not common.is_number:
+            common_zeros = solve(common, x)
+            restriction = (
+                f"$x \\neq {_latex_expr(common_zeros[0])}$" if len(common_zeros) == 1
+                else ", ".join(f"$x \\neq {_latex_expr(z)}$" for z in common_zeros)
+            )
+            numer_rem = sp.cancel(numer_fac / common)
+            denom_rem = sp.cancel(denom_fac / common)
+            lines.append(
+                f"**Step 4 — Cancel the common factor $({_latex_expr(common)})$** "
+                f"(valid for {restriction}):\n\n"
+                f"$$f(x) = \\frac{{\\cancel{{({_latex_expr(common)})}} \\cdot ({_latex_expr(numer_rem)})}}"
+                f"{{\\cancel{{({_latex_expr(common)})}} \\cdot ({_latex_expr(denom_rem)})}}$$"
+            )
+        else:
+            lines.append("**Step 4 —** No common polynomial factors to cancel.")
+    except Exception:
+        lines.append("**Step 4 —** No common polynomial factors to cancel.")
+
+    lines.append(f"**Final simplified form:**\n\n$$f(x) = {_latex_expr(factored)}$$")
+    return "\n\n".join(lines)
+
+
 def _factoring_detail(expr_sympy, expanded, factored, degree, x, poly) -> str:
+    # Route rational functions to the dedicated handler
+    if degree is None:
+        try:
+            _, denom = sp.fraction(sp.cancel(expr_sympy))
+            if denom not in (sp.Integer(1), sp.Integer(-1)):
+                return _rational_factoring_detail(expr_sympy, factored, x)
+        except Exception:
+            pass
+
     lines = []
     lines.append(f"**Starting expression:** $$f(x) = {_latex_expr(expanded)}$$")
 
@@ -794,6 +1189,8 @@ def analyze_piecewise(raw_expr: str) -> dict:
         "degree": None, "expanded": None, "factored": None, "vertex": None,
         "axis_of_symmetry": None, "range": None, "inverse": None,
         "steps": [], "linear_forms": None,
+        "vertical_asymptotes": [], "horizontal_asymptotes": [],
+        "vertical_asymptote_steps": "", "horizontal_asymptote_steps": "",
     }
 
 

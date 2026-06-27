@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState } from 'react'
 import katex from 'katex'
 import 'katex/dist/katex.min.css'
 import './AnalysisPanel.css'
@@ -24,26 +24,20 @@ function KTex({ math, display = false }) {
   )
 }
 
-// Split text on $$...$$ (block) then $...$ (inline), render each segment.
 function MixedMath({ text }) {
   if (!text) return null
-
-  // Split on $$...$$ first
   const blockSegments = text.split(/([$]{2}[\s\S]*?[$]{2})/g)
-
   return (
     <>
       {blockSegments.map((seg, i) => {
         if (seg.startsWith('$$') && seg.endsWith('$$') && seg.length > 4) {
           return <KTex key={i} math={seg.slice(2, -2)} display />
         }
-        // Split remaining on $...$
         const inlineSegments = seg.split(/(\$[^$]+\$)/g)
         return inlineSegments.map((s, j) => {
           if (s.startsWith('$') && s.endsWith('$') && s.length > 2) {
             return <KTex key={`${i}-${j}`} math={s.slice(1, -1)} />
           }
-          // Handle **bold** markers
           if (s.includes('**')) {
             const boldParts = s.split(/(\*\*[^*]+\*\*)/g)
             return boldParts.map((bp, k) => {
@@ -69,32 +63,40 @@ function renderContent(text) {
   ))
 }
 
-function StepSection({ steps }) {
+function InfoModal({ title, steps }) {
   const [open, setOpen] = useState(false)
   if (!steps || steps.length === 0) return null
-
   return (
-    <div className="step-section">
-      <button className="step-toggle" onClick={() => setOpen(o => !o)}>
-        <span className="step-toggle-icon">{open ? '▾' : '▸'}</span>
-        Step-by-step breakdown
-      </button>
+    <>
+      <button className="info-btn" onClick={() => setOpen(true)} title={title}>ⓘ</button>
       {open && (
-        <div className="step-content">
-          {steps.map((step, i) => (
-            <div key={i} className="step-item">
-              <div className="step-num">Step {i + 1}</div>
-              <div className="step-title">{step.title}</div>
-              <div className="step-body">{renderContent(step.content)}</div>
+        <div className="info-overlay" onClick={() => setOpen(false)}>
+          <div className="info-modal" onClick={e => e.stopPropagation()}>
+            <div className="info-modal-header">
+              <span className="info-modal-title">{title}</span>
+              <button className="info-modal-close" onClick={() => setOpen(false)}>✕</button>
             </div>
-          ))}
+            <div className="info-modal-body">
+              {steps.map((step, i) => (
+                <div key={i} className="step-item">
+                  {steps.length > 1 && <div className="step-num">Step {i + 1}</div>}
+                  <div className="step-title" style={steps.length === 1 ? { gridColumn: '1 / -1' } : undefined}>
+                    {step.title}
+                  </div>
+                  <div className="step-body" style={steps.length === 1 ? { gridColumn: '1 / -1' } : undefined}>
+                    {renderContent(step.content)}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       )}
-    </div>
+    </>
   )
 }
 
-function Fact({ label, value }) {
+function Fact({ label, value, info }) {
   if (!value) return null
   const hasLatex = typeof value === 'string' && value.includes('\\')
   return (
@@ -103,6 +105,7 @@ function Fact({ label, value }) {
       <span className="fact-value">
         {hasLatex ? <KTex math={value} /> : value}
       </span>
+      {info && <InfoModal title={info.title} steps={info.steps} />}
     </div>
   )
 }
@@ -261,6 +264,22 @@ function LinearFormsSection({ linearForms, expression }) {
   )
 }
 
+function findStep(steps, keyword) {
+  if (!steps) return null
+  const kw = keyword.toLowerCase()
+  return steps.find(s => s.title.toLowerCase().includes(kw)) || null
+}
+
+function extractEndBehaviorSummary(steps) {
+  const step = findStep(steps, 'identify')
+  if (!step) return null
+  const matches = [...step.content.matchAll(/\*\*End behavior:\*\*\s*([^\n]+)/g)]
+  if (!matches.length) return null
+  return matches[matches.length - 1][1].trim()
+    .replace(/\*\*/g, '')
+    .replace(/\$([^$]+)\$/g, '$1')
+}
+
 export default function AnalysisPanel({ analysis, color, index, onClose }) {
   if (!analysis) return null
 
@@ -275,6 +294,41 @@ export default function AnalysisPanel({ analysis, color, index, onClose }) {
       </div>
     )
   }
+
+  const steps = analysis.steps || []
+  const identifyStep = findStep(steps, 'identify')
+  const zerosStep    = findStep(steps, 'zero')
+  const yIntStep     = findStep(steps, 'y-intercept')
+  const vertexStep   = findStep(steps, 'vertex')
+  const factorStep   = findStep(steps, 'factor')
+  const derivStep    = findStep(steps, 'derivative')
+
+  const vertAsym  = analysis.vertical_asymptotes  || []
+  const horizAsym = analysis.horizontal_asymptotes || []
+  const showAsymptotes = analysis.degree == null || vertAsym.length > 0 || horizAsym.length > 0
+
+  const vaStepsContent = analysis.vertical_asymptote_steps
+    ? [{ title: 'How to find vertical asymptotes', content: analysis.vertical_asymptote_steps }]
+    : null
+  const haStepsContent = analysis.horizontal_asymptote_steps
+    ? [{ title: 'How to find horizontal asymptotes', content: analysis.horizontal_asymptote_steps }]
+    : null
+
+  const vaDisplayValue = vertAsym.length > 0
+    ? vertAsym.map(va => `x = ${va.x}`).join(',\\quad ')
+    : 'None'
+  const haDisplayValue = horizAsym.length > 0
+    ? horizAsym.map(ha => `y = ${ha.y}`).join(',\\quad ')
+    : 'None'
+
+  const endBehaviorSummary = extractEndBehaviorSummary(steps)
+
+  const turningPointsValue = analysis.degree >= 2
+    ? analysis.degree === 2
+      ? '1 turning point'
+      : `At most ${analysis.degree - 1} turning points`
+    : null
+  const turningSteps = [vertexStep, derivStep].filter(Boolean)
 
   return (
     <div className="analysis-panel">
@@ -294,13 +348,22 @@ export default function AnalysisPanel({ analysis, color, index, onClose }) {
           {analysis.expanded && analysis.factored && analysis.expanded !== analysis.factored && (
             <>
               <Fact label="Expanded" value={analysis.expanded} />
-              <Fact label="Factored" value={analysis.factored} />
+              <Fact label="Factored" value={analysis.factored}
+                info={factorStep ? { title: 'How to find factored form', steps: [factorStep] } : null} />
             </>
           )}
           {analysis.expanded && (analysis.expanded === analysis.factored || !analysis.factored) && (
             <Fact label="Standard form" value={analysis.expanded} />
           )}
-          <Fact label="Y-intercept" value={analysis.y_intercept ? `(0,\\ ${analysis.y_intercept})` : null} />
+
+          {endBehaviorSummary && (
+            <Fact label="End behavior" value={endBehaviorSummary}
+              info={identifyStep ? { title: 'End behavior', steps: [identifyStep] } : null} />
+          )}
+
+          <Fact label="Y-intercept" value={analysis.y_intercept ? `(0,\\ ${analysis.y_intercept})` : null}
+            info={yIntStep ? { title: 'Finding the y-intercept', steps: [yIntStep] } : null} />
+
           {analysis.roots && analysis.roots.length > 0 && (
             <div className="fact-row">
               <span className="fact-label">Zeros (roots)</span>
@@ -314,15 +377,36 @@ export default function AnalysisPanel({ analysis, color, index, onClose }) {
                   </span>
                 ))}
               </span>
+              {zerosStep && <InfoModal title="How to find zeros" steps={[zerosStep]} />}
             </div>
           )}
           {analysis.roots && analysis.roots.length === 0 && (
-            <Fact label="Zeros (roots)" value="No real roots" />
+            <Fact label="Zeros (roots)" value="No real roots"
+              info={zerosStep ? { title: 'How to find zeros', steps: [zerosStep] } : null} />
           )}
+
           <Fact label="Axis of symmetry" value={analysis.axis_of_symmetry} />
-          <Fact label="Vertex" value={analysis.vertex} />
+
+          <Fact label="Vertex" value={analysis.vertex}
+            info={vertexStep ? { title: 'Finding the vertex', steps: [vertexStep] } : null} />
+
+          {turningPointsValue && (
+            <Fact label="Turning points" value={turningPointsValue}
+              info={turningSteps.length ? { title: 'Degree & turning points', steps: turningSteps } : null} />
+          )}
+
           <Fact label="Domain" value={analysis.domain} />
           <Fact label="Range" value={analysis.range} />
+
+          {showAsymptotes && (
+            <Fact label="Vertical asymptotes" value={vaDisplayValue}
+              info={vaStepsContent ? { title: 'Finding vertical asymptotes', steps: vaStepsContent } : null} />
+          )}
+          {showAsymptotes && (
+            <Fact label="Horizontal asymptotes" value={haDisplayValue}
+              info={haStepsContent ? { title: 'Finding horizontal asymptotes', steps: haStepsContent } : null} />
+          )}
+
           {analysis.inverse && (
             <div className="fact-row">
               <span className="fact-label">Inverse</span>
@@ -348,8 +432,6 @@ export default function AnalysisPanel({ analysis, color, index, onClose }) {
           linearForms={analysis.linear_forms}
           expression={analysis.expression}
         />
-
-        <StepSection steps={analysis.steps} />
       </div>
     </div>
   )
