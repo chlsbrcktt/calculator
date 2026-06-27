@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef, useEffect, lazy, Suspense } from 'react'
+import API from './api'
 import GraphPanel from './components/GraphPanel'
 import FunctionInputs from './components/FunctionInputs'
 import AnalysisPanel from './components/AnalysisPanel'
@@ -52,7 +53,7 @@ export default function App() {
     setLoading(true)
     setError(null)
     try {
-      const res = await fetch('http://localhost:8001/evaluate', {
+      const res = await fetch('${API}/evaluate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -82,7 +83,7 @@ export default function App() {
   const doAnalyze = useCallback(async (index, expression) => {
     setAnalysisLoading(prev => prev.map((v, i) => i === index ? true : v))
     try {
-      const res = await fetch('http://localhost:8001/analyze', {
+      const res = await fetch('${API}/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ expression }),

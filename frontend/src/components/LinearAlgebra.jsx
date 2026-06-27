@@ -1,5 +1,6 @@
 ﻿import { useState, useRef, useEffect, memo } from 'react'
 import Plotly from 'plotly.js-dist-min'
+import API from '../api'
 import './LinearAlgebra.css'
 
 // Simple imperative Plotly wrapper — avoids react-plotly.js CJS interop issues
@@ -1039,7 +1040,7 @@ export function SurfacesSection() {
         ? { mode, expression: expr, x_range: xRange, y_range: yRange, num_points: isSpacetime ? 80 : 70 }
         : { mode: 'parametric', x_expr: xExpr, y_expr: yExpr, z_expr: zExpr,
             u_range: uRange, v_range: vRange, num_points: 70 }
-      const res = await fetch('http://localhost:8001/surface', {
+      const res = await fetch(`${API}/surface`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),

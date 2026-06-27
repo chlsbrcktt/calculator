@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import API from '../api'
 import katex from 'katex'
 import 'katex/dist/katex.min.css'
 import './AnalysisPanel.css'
@@ -188,7 +189,7 @@ function LinearFormsSection({ linearForms, expression }) {
     setSteps(null)
     setOpen(false)
     try {
-      const res = await fetch('http://localhost:8001/convert-form', {
+      const res = await fetch(`${API}/convert-form`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ expression, from_form: fromForm, to_form: toForm }),

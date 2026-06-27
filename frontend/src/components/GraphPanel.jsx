@@ -1,4 +1,5 @@
 import { useRef, useState, useEffect, useCallback } from 'react'
+import API from '../api'
 import {
   Chart as ChartJS,
   LinearScale,
@@ -495,11 +496,11 @@ export default function GraphPanel({ plotData, functions, colors, xMin, xMax, lo
       }
       try {
         const [r1, r2] = await Promise.all([
-          fetch('http://localhost:8001/differentiate', {
+          fetch(`${API}/differentiate`, {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ expression: expr, order: 1 }),
           }).then(r => r.json()),
-          fetch('http://localhost:8001/differentiate', {
+          fetch(`${API}/differentiate`, {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ expression: expr, order: 2 }),
           }).then(r => r.json()),

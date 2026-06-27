@@ -1,6 +1,7 @@
 ﻿import { useState, useRef, useEffect, memo, useCallback } from 'react'
 import Plotly from 'plotly.js-dist-min'
 import { SurfacesSection } from './LinearAlgebra'
+import API from '../api'
 import './LinearAlgebra.css'
 
 // ─── Shared Plot wrapper ──────────────────────────────────────────────────────
@@ -23,8 +24,6 @@ const BASE_LAYOUT = {
   legend: { x: 1, xanchor: 'right', y: 1, bgcolor: 'rgba(255,255,255,0.95)',
     font: { color: '#475569', size: 11 }, bordercolor: '#e5e7eb', borderwidth: 1 },
 }
-
-const API = 'http://localhost:8001'
 
 // ─── Numeric helpers ──────────────────────────────────────────────────────────
 function interp(xs, ys, xi) {
