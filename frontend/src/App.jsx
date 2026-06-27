@@ -53,7 +53,7 @@ export default function App() {
     setLoading(true)
     setError(null)
     try {
-      const res = await fetch('${API}/evaluate', {
+      const res = await fetch(`${API}/evaluate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -83,7 +83,7 @@ export default function App() {
   const doAnalyze = useCallback(async (index, expression) => {
     setAnalysisLoading(prev => prev.map((v, i) => i === index ? true : v))
     try {
-      const res = await fetch('${API}/analyze', {
+      const res = await fetch(`${API}/analyze`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ expression }),
