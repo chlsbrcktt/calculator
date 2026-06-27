@@ -782,7 +782,7 @@ function CausalSection() {
           return (<>
             <div className="causal-result-box">
               <div className="causal-title">Difference-in-Differences Estimator</div>
-              <div className="causal-formula">DiD = (Ȳ_{T,after} − Ȳ_{T,before}) − (Ȳ_{C,after} − Ȳ_{C,before})</div>
+              <div className="causal-formula">{"DiD = (Ȳ_{T,after} − Ȳ_{T,before}) − (Ȳ_{C,after} − Ȳ_{C,before})"}</div>
               <div className="causal-big" style={{ color: '#f59e0b' }}>= {fmt(did, 4)}</div>
               <div className="causal-interp">Estimated treatment effect (under parallel trends)</div>
             </div>
