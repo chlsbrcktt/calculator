@@ -149,3 +149,10 @@
   font-family: ui-monospace, Consolas, monospace;
   letter-spacing: 0.02em;
 }
+
+@media (max-width: 768px) {
+  .graph-panel {
+    height: 100%;
+    flex-shrink: 1;
+  }
+}
