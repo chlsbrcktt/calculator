@@ -1,5 +1,7 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+import os
 from pydantic import BaseModel
 import numpy as np
 import math
@@ -1698,3 +1700,7 @@ def calculate(req: CalculateRequest):
 @app.get("/health")
 def health():
     return {"status": "ok"}
+
+_static_dir = os.path.join(os.path.dirname(__file__), "dist")
+if os.path.isdir(_static_dir):
+    app.mount("/", StaticFiles(directory=_static_dir, html=True), name="frontend")

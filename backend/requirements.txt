@@ -3,3 +3,4 @@ uvicorn[standard]
 sympy
 numpy
 pydantic
+aiofiles
