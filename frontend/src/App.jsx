@@ -5,6 +5,7 @@ import FunctionInputs from './components/FunctionInputs'
 import AnalysisPanel from './components/AnalysisPanel'
 import './App.css'
 
+const Calculator       = lazy(() => import('./components/Calculator'))
 const LinearAlgebra    = lazy(() => import('./components/LinearAlgebra'))
 const Geometry         = lazy(() => import('./components/Geometry'))
 const CalculusSurfaces = lazy(() => import('./components/CalculusSurfaces'))
@@ -12,6 +13,7 @@ const Statistics       = lazy(() => import('./components/Statistics'))
 const Physics          = lazy(() => import('./components/Physics'))
 
 const TABS = [
+  { id: 'calculator', label: 'Calculator' },
   { id: 'functions', label: 'Functions' },
   { id: 'geometry',  label: 'Geometry' },
   { id: 'linalg',    label: 'Linear Algebra' },
@@ -241,6 +243,7 @@ export default function App() {
         </div>
       ) : (
         <Suspense fallback={<div style={{flex:1,display:'flex',alignItems:'center',justifyContent:'center',color:'#334155'}}>Loading…</div>}>
+          {activeTab === 'calculator' && <Calculator />}
           {activeTab === 'geometry' && <Geometry />}
           {activeTab === 'linalg'   && <LinearAlgebra />}
           {activeTab === 'calculus' && <CalculusSurfaces />}

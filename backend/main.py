@@ -1563,6 +1563,139 @@ def integrate_sym(req: IntegrateRequest):
         raise HTTPException(status_code=400, detail=str(e))
 
 
+class CalculateRequest(BaseModel):
+    expression: str
+    variables: dict = {}
+
+
+@app.post("/calculate")
+def calculate(req: CalculateRequest):
+    x_sym = symbols('x')
+    local = {"x": x_sym, "e": sp.E, "pi": sp.pi}
+
+    # Parse variable definitions
+    var_map = {}   # symbol → sympy value
+    var_display = {}  # name → latex string
+    for name, val_str in req.variables.items():
+        if not name.strip() or not val_str.strip():
+            continue
+        try:
+            sym = symbols(name.strip())
+            val = parse_expr(normalize_for_sympy(val_str.strip()),
+                             transformations=TRANSFORMATIONS,
+                             local_dict={**local, name.strip(): sym})
+            var_map[sym] = val
+            var_display[name.strip()] = latex(val)
+            local[name.strip()] = sym
+        except Exception:
+            pass
+
+    # Detect equation (has = but not ==)
+    raw = req.expression.strip()
+    is_equation = '=' in raw and '==' not in raw
+    steps = []
+
+    try:
+        if is_equation:
+            lhs_str, rhs_str = raw.split('=', 1)
+            lhs = parse_expr(normalize_for_sympy(lhs_str), transformations=TRANSFORMATIONS, local_dict=local)
+            rhs = parse_expr(normalize_for_sympy(rhs_str), transformations=TRANSFORMATIONS, local_dict=local)
+            expr_sympy = lhs - rhs
+
+            steps.append({"label": "Equation", "expr": f"{latex(lhs)} = {latex(rhs)}"})
+
+            # Substitute variables
+            for sym, val in var_map.items():
+                new_lhs = lhs.subs(sym, val)
+                new_rhs = rhs.subs(sym, val)
+                if new_lhs != lhs or new_rhs != rhs:
+                    steps.append({
+                        "label": f"Substitute ${latex(sym)} = {latex(val)}$",
+                        "expr": f"{latex(new_lhs)} = {latex(new_rhs)}"
+                    })
+                lhs, rhs = new_lhs, new_rhs
+
+            # Free symbols remaining after substitution
+            remaining = (lhs - rhs).free_symbols
+            if not remaining:
+                # Just check if true
+                result_val = simplify(lhs - rhs)
+                if result_val == 0:
+                    result_str = "True (identity)"
+                else:
+                    result_str = f"False (difference = {latex(result_val)})"
+                steps.append({"label": "Result", "expr": result_str})
+                return {"result": result_str, "result_latex": result_str, "steps": steps,
+                        "numeric": None, "is_equation": True, "solutions": []}
+            else:
+                solve_for = list(remaining)[0]
+                steps.append({"label": f"Solve for ${latex(solve_for)}$",
+                               "expr": f"{latex(lhs)} = {latex(rhs)}"})
+                sols = solve(lhs - rhs, solve_for)
+                sol_latex = [latex(s) for s in sols]
+                sol_display = ",\\quad ".join(f"{latex(solve_for)} = {s}" for s in sol_latex) if sol_latex else "No solution"
+                steps.append({"label": "Solution", "expr": sol_display})
+                try:
+                    numerics = [float(s) for s in sols]
+                except Exception:
+                    numerics = []
+                return {"result": sol_display, "result_latex": sol_display,
+                        "steps": steps, "numeric": numerics[0] if len(numerics) == 1 else None,
+                        "is_equation": True, "solutions": sol_latex}
+
+        else:
+            # Expression evaluation
+            expr_sympy = parse_expr(normalize_for_sympy(raw),
+                                    transformations=TRANSFORMATIONS, local_dict=local)
+            steps.append({"label": "Expression", "expr": latex(expr_sympy)})
+
+            # Substitute variables one at a time
+            current = expr_sympy
+            for sym, val in var_map.items():
+                substituted = current.subs(sym, val)
+                if substituted != current:
+                    steps.append({
+                        "label": f"Substitute ${latex(sym)} = {latex(val)}$",
+                        "expr": latex(substituted)
+                    })
+                current = substituted
+
+            # Simplify
+            simplified = simplify(current)
+            if simplified != current:
+                steps.append({"label": "Simplify", "expr": latex(simplified)})
+            current = simplified
+
+            # Numeric
+            numeric = None
+            if current.is_number:
+                try:
+                    numeric = float(current)
+                    approx = f"{numeric:.10g}"
+                    exact_str = latex(current)
+                    if exact_str != approx:
+                        steps.append({"label": "Exact", "expr": exact_str})
+                        steps.append({"label": "Decimal", "expr": approx})
+                    else:
+                        steps.append({"label": "Result", "expr": exact_str})
+                except Exception:
+                    steps.append({"label": "Result", "expr": latex(current)})
+            else:
+                steps.append({"label": "Result", "expr": latex(current)})
+
+            return {
+                "result": str(current),
+                "result_latex": latex(current),
+                "steps": steps,
+                "numeric": numeric,
+                "is_equation": False,
+                "solutions": [],
+            }
+
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
 @app.get("/health")
 def health():
     return {"status": "ok"}
