@@ -463,6 +463,15 @@ export default function GraphPanel({ plotData, functions, colors, xMin, xMax, lo
   const [showKeyPoints, setShowKeyPoints] = useState(false)
   const [d1Exprs, setD1Exprs] = useState([null, null, null])
   const [d2Exprs, setD2Exprs] = useState([null, null, null])
+  const [activeChart, setActiveChart] = useState('main')
+  const [isMobile, setIsMobile] = useState(() => window.matchMedia('(max-width: 768px)').matches)
+
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 768px)')
+    const handler = e => setIsMobile(e.matches)
+    mq.addEventListener('change', handler)
+    return () => mq.removeEventListener('change', handler)
+  }, [])
 
   // Shared view bounds for all three charts — updating this syncs them all
   const [view, setView] = useState({ x0: xMin, x1: xMax, y0: xMin, y1: xMax })
@@ -585,42 +594,87 @@ export default function GraphPanel({ plotData, functions, colors, xMin, xMax, lo
   const handleZoomIn  = () => chartRef.current?.zoom(1.3)
   const handleZoomOut = () => chartRef.current?.zoom(0.77)
 
+  const d1Datasets = buildDerivDatasets(plotData, functions, colors, 1, d1Exprs)
+  const d2Datasets = buildDerivDatasets(plotData, functions, colors, 2, d2Exprs)
+
+  const derivOpts = (order) => ({
+    responsive: true,
+    maintainAspectRatio: false,
+    animation: { duration: 0 },
+    interaction: { mode: 'index', intersect: false },
+    scales: {
+      x: { type: 'linear', min: view.x0, max: view.x1, grid: { display: false }, ticks: { ...DERIV_TICK_OPTS, maxRotation: 0, maxTicksLimit: 21 }, border: { display: false } },
+      y: { type: 'linear', min: view.y0, max: view.y1, grid: { display: false }, ticks: { ...DERIV_TICK_OPTS }, border: { display: false } },
+    },
+    plugins: {
+      legend: {
+        display: true, position: 'top', align: 'start',
+        labels: { color: '#475569', font: { size: 11, family: 'ui-monospace, Consolas, monospace' }, boxWidth: 20, boxHeight: 2, padding: 16, usePointStyle: false, filter: item => item.text !== null },
+      },
+      tooltip: {
+        backgroundColor: '#1e293b', titleColor: '#94a3b8', bodyColor: '#f8fafc', borderColor: '#334155', borderWidth: 1, padding: 8, cornerRadius: 6,
+        callbacks: { title: items => `x = ${items[0]?.parsed.x?.toFixed(4)}`, label: ctx => ctx.dataset.label === null ? null : ` ${ctx.dataset.label.split('=')[0].trim()} = ${ctx.parsed.y?.toFixed(4)}` },
+        filter: item => item.dataset.label !== null,
+      },
+      zoom: zoomCfg,
+    },
+  })
+
   return (
     <>
       <div className="graph-panel">
-        {loading && <div className="graph-status">Computing...</div>}
-
-        <div className="graph-toolbar">
-          <button className="graph-btn" onClick={handleReset} title="Reset zoom">↺ Reset</button>
-          <button className="graph-btn" onClick={handleZoomIn} title="Zoom in">+</button>
-          <button className="graph-btn" onClick={handleZoomOut} title="Zoom out">-</button>
-          <span className="graph-toolbar-sep" />
-          <label className="kp-toggle">
-            <input
-              type="checkbox"
-              checked={showKeyPoints}
-              onChange={e => setShowKeyPoints(e.target.checked)}
-            />
-            Key points
-          </label>
-          <span className="graph-hint">Scroll to zoom · Drag to pan</span>
-        </div>
-
-        {error && <div className="graph-error">{error}</div>}
-
-        {!hasData && !loading && !error && (
-          <div className="graph-empty">Enter a function to see its graph</div>
+        {isMobile && (
+          <div className="graph-chart-tabs">
+            {[['main', 'f(x)'], ['d1', "f′(x)"], ['d2', "f″(x)"]].map(([id, label]) => (
+              <button key={id} className={`graph-chart-tab${activeChart === id ? ' active' : ''}`} onClick={() => setActiveChart(id)}>{label}</button>
+            ))}
+          </div>
         )}
 
-        <div className={`graph-canvas-wrap ${!hasData ? 'faded' : ''}`}>
-          <div className="graph-canvas-inner">
-            <Line ref={chartRef} data={{ datasets }} options={options} />
+        {loading && <div className="graph-status">Computing...</div>}
+
+        {(!isMobile || activeChart === 'main') && <>
+          <div className="graph-toolbar">
+            <button className="graph-btn" onClick={handleReset} title="Reset zoom">↺ Reset</button>
+            <button className="graph-btn" onClick={handleZoomIn} title="Zoom in">+</button>
+            <button className="graph-btn" onClick={handleZoomOut} title="Zoom out">-</button>
+            <span className="graph-toolbar-sep" />
+            <label className="kp-toggle">
+              <input type="checkbox" checked={showKeyPoints} onChange={e => setShowKeyPoints(e.target.checked)} />
+              Key points
+            </label>
+            <span className="graph-hint">Scroll to zoom · Drag to pan</span>
           </div>
-        </div>
+          {error && <div className="graph-error">{error}</div>}
+          {!hasData && !loading && !error && <div className="graph-empty">Enter a function to see its graph</div>}
+          <div className={`graph-canvas-wrap ${!hasData ? 'faded' : ''}`}>
+            <div className="graph-canvas-inner">
+              <Line ref={chartRef} data={{ datasets }} options={options} />
+            </div>
+          </div>
+        </>}
+
+        {isMobile && activeChart === 'd1' && (
+          <div className={`graph-canvas-wrap ${d1Datasets.length === 0 ? 'faded' : ''}`}>
+            <div className="graph-canvas-inner">
+              <Line ref={d1Ref} data={{ datasets: d1Datasets }} options={derivOpts(1)} />
+            </div>
+          </div>
+        )}
+
+        {isMobile && activeChart === 'd2' && (
+          <div className={`graph-canvas-wrap ${d2Datasets.length === 0 ? 'faded' : ''}`}>
+            <div className="graph-canvas-inner">
+              <Line ref={d2Ref} data={{ datasets: d2Datasets }} options={derivOpts(2)} />
+            </div>
+          </div>
+        )}
       </div>
 
-      <DerivChart plotData={plotData} functions={functions} colors={colors} view={view} order={1} derivExprs={d1Exprs} lineRef={d1Ref} zoomCfg={zoomCfg} />
-      <DerivChart plotData={plotData} functions={functions} colors={colors} view={view} order={2} derivExprs={d2Exprs} lineRef={d2Ref} zoomCfg={zoomCfg} />
+      {!isMobile && <>
+        <DerivChart plotData={plotData} functions={functions} colors={colors} view={view} order={1} derivExprs={d1Exprs} lineRef={d1Ref} zoomCfg={zoomCfg} />
+        <DerivChart plotData={plotData} functions={functions} colors={colors} view={view} order={2} derivExprs={d2Exprs} lineRef={d2Ref} zoomCfg={zoomCfg} />
+      </>}
     </>
   )
 }

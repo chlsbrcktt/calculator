@@ -150,6 +150,33 @@
   letter-spacing: 0.02em;
 }
 
+.graph-chart-tabs {
+  display: flex;
+  border-bottom: 1px solid #e2e8f0;
+  background: #f8fafc;
+  flex-shrink: 0;
+}
+
+.graph-chart-tab {
+  flex: 1;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  padding: 8px 4px;
+  font-size: 12px;
+  font-family: ui-monospace, monospace;
+  font-weight: 600;
+  color: #94a3b8;
+  cursor: pointer;
+  transition: color 0.12s, border-color 0.12s;
+}
+
+.graph-chart-tab.active {
+  color: #2563eb;
+  border-bottom-color: #2563eb;
+  background: #fff;
+}
+
 @media (max-width: 768px) {
   .graph-panel {
     height: 300px;
