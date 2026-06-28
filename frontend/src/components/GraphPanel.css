@@ -152,7 +152,6 @@
 
 @media (max-width: 768px) {
   .graph-panel {
-    height: 100%;
-    flex-shrink: 1;
+    height: 300px;
   }
 }

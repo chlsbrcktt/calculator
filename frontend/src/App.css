@@ -195,12 +195,8 @@
 
   .graph-col {
     order: 1;
-    height: 72vw;
-    min-height: 280px;
-    max-height: 420px;
     flex: none;
     border-bottom: 1px solid #e2e8f0;
-    overflow: hidden;
   }
 
   .functions-col {
