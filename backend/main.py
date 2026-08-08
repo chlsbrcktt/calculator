@@ -495,6 +495,18 @@ def _compute_inverse(expr_sympy, x, degree) -> Optional[dict]:
     if degree is not None and degree >= 3:
         return None
 
+    # For rational functions (degree=None), the inverse equation is p(x) - y·q(x) = 0.
+    # Its degree in x is max(deg p, deg q). Skip if that's ≥ 3 to avoid hangs.
+    try:
+        _numer, _denom = sp.fraction(sp.cancel(expr_sympy))
+        if _denom not in (sp.Integer(1), sp.Integer(-1)):
+            if _numer.is_polynomial(x) and _denom.is_polynomial(x):
+                _max_deg = max(int(sp.Poly(_numer, x).degree()), int(sp.Poly(_denom, x).degree()))
+                if _max_deg >= 3:
+                    return None
+    except Exception:
+        pass
+
     y = symbols('y')
     try:
         sols = solve(expr_sympy - y, x)
