@@ -122,6 +122,29 @@
   font-size: 12px;
 }
 
+.symmetry-badge {
+  font-size: 13px;
+  font-weight: 600;
+  padding: 2px 10px;
+  border-radius: 12px;
+  border: 1px solid;
+}
+.symmetry-even {
+  color: #1d4ed8;
+  background: #eff6ff;
+  border-color: #bfdbfe;
+}
+.symmetry-odd {
+  color: #7c3aed;
+  background: #f5f3ff;
+  border-color: #ddd6fe;
+}
+.symmetry-neither {
+  color: #374151;
+  background: #f1f5f9;
+  border-color: #e2e8f0;
+}
+
 /* Steps */
 .step-section {
   border: 1px solid #e2e8f0;

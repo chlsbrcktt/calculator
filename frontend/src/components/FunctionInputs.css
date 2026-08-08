@@ -364,37 +364,159 @@
   color: #2563eb;
 }
 
-/* ── Input mode tabs ── */
-.fi-tabs {
+/* ── Input mode dropdown ── */
+.fi-mode-row {
   display: flex;
   align-items: center;
-  border-bottom: 1px solid #e2e8f0;
-  margin-bottom: 4px;
-  gap: 0;
+  gap: 8px;
 }
 
-.fi-tab {
-  padding: 6px 12px;
+.fi-mode-select {
+  flex: 1;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 6px 10px;
   font-size: 12px;
   font-weight: 500;
-  border: none;
-  background: none;
+  color: #1e293b;
+  background: #f8fafc;
+  outline: none;
   cursor: pointer;
-  border-bottom: 2px solid transparent;
-  margin-bottom: -1px;
+  transition: border-color 0.12s;
+  font-family: inherit;
+}
+
+.fi-mode-select:focus {
+  border-color: #3b82f6;
+  background: #fff;
+}
+
+/* ── Two Points → Line tab ── */
+.tp-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.tp-hint {
+  font-size: 11px;
   color: #94a3b8;
-  transition: color 0.12s, border-color 0.12s;
+  line-height: 1.4;
+}
+
+.tp-slot {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+}
+
+.tp-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.tp-fi-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: #94a3b8;
   font-family: ui-monospace, Consolas, monospace;
-  white-space: nowrap;
+  letter-spacing: 0.06em;
 }
 
-.fi-tab:hover {
-  color: #475569;
+.tp-point-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
-.fi-tab.active {
+.tp-pt-label {
+  font-size: 11px;
+  color: #64748b;
+  min-width: 44px;
+  flex-shrink: 0;
+}
+
+.tp-coord-lbl {
+  font-size: 11px;
+  color: #94a3b8;
+  font-family: ui-monospace, Consolas, monospace;
+  flex-shrink: 0;
+}
+
+.tp-coord-input {
+  width: 56px;
+  padding: 4px 6px;
+  border: 1px solid #e2e8f0;
+  border-radius: 5px;
+  background: #ffffff;
+  color: #1e293b;
+  font-size: 12px;
+  font-family: ui-monospace, Consolas, monospace;
+  outline: none;
+  transition: border-color 0.12s;
+  text-align: center;
+}
+
+.tp-coord-input:focus { border-color: #3b82f6; }
+.tp-coord-input::placeholder { color: #cbd5e1; }
+
+.tp-preview {
+  font-size: 12px;
+  font-family: ui-monospace, Consolas, monospace;
   color: #2563eb;
-  border-bottom-color: #2563eb;
+  padding: 3px 8px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 4px;
+  width: fit-content;
+  margin-top: 2px;
+}
+
+.tp-steps {
+  background: #fefdf8;
+  border: 1px solid #e5e0c8;
+  border-radius: 7px;
+  padding: 10px 12px;
+  margin-top: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.tp-step {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.tp-step-head {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: #92836a;
+  padding-bottom: 3px;
+  border-bottom: 1px solid #e5e0c8;
+  margin-bottom: 2px;
+}
+
+.tp-step-line {
+  font-size: 12px;
+  font-family: ui-monospace, Consolas, 'Courier New', monospace;
+  color: #2d2a1e;
+  padding: 1px 0;
+  white-space: pre;
+}
+
+.tp-step-line.final {
+  font-weight: 700;
+  color: #1d4ed8;
+  border-top: 1.5px solid #c8c3ad;
+  margin-top: 3px;
+  padding-top: 4px;
 }
 
 /* ── Point & Slope tab ── */

@@ -120,6 +120,7 @@ const EXAMPLES = [
 ]
 
 const EMPTY_PS = { x: '', y: '', m: '', mUndef: false }
+const EMPTY_TP = { x1: '', y1: '', x2: '', y2: '' }
 
 const R9 = v => Math.round(v * 1e9) / 1e9
 
@@ -302,6 +303,133 @@ function computeFromPS(ps) {
   return makeQuadratic(qr.a, qr.b, qr.c)
 }
 
+function rFmt(r) {
+  if (!r) return '?'
+  return r.d === 1 ? String(r.n) : `${r.n}/${r.d}`
+}
+function rFmtAbs(r) {
+  if (!r) return '?'
+  return r.d === 1 ? String(Math.abs(r.n)) : `${Math.abs(r.n)}/${r.d}`
+}
+
+function computeFromTwoPoints(tp) {
+  const x1f = parseFrac(tp.x1), y1f = parseFrac(tp.y1)
+  const x2f = parseFrac(tp.x2), y2f = parseFrac(tp.y2)
+  if (isNaN(x1f) || isNaN(y1f) || isNaN(x2f) || isNaN(y2f)) return null
+
+  const ff = v => String(R9(v))
+
+  // Vertical line
+  if (Math.abs(x2f - x1f) < 1e-12) {
+    return {
+      vx: x1f, expr: null, display: `x = ${ff(x1f)}`,
+      steps: [
+        { head: 'Step 1 — Slope', lines: [
+          `m = (y₂ − y₁) / (x₂ − x₁)`,
+          `  = (${ff(y2f)} − ${ff(y1f)}) / (${ff(x2f)} − ${ff(x1f)})`,
+          `  = undefined  (x-values equal → vertical line)`,
+        ]},
+        { head: 'Equation', lines: [`x = ${ff(x1f)}`], hasFinal: true },
+      ]
+    }
+  }
+
+  // Try exact rational arithmetic
+  const x1R = toRat(tp.x1.trim()), y1R = toRat(tp.y1.trim())
+  const x2R = toRat(tp.x2.trim()), y2R = toRat(tp.y2.trim())
+
+  if (x1R && y1R && x2R && y2R) {
+    const dy = rSub(y2R, y1R), dx = rSub(x2R, x1R)
+    const mR = dy && dx && dx.n !== 0 ? rDiv(dy, dx) : null
+    const bR = mR ? rSub(y1R, rMul(mR, x1R)) : null
+    if (mR && bR !== null) {
+      const mF = rToF(mR), bF = rToF(bR)
+      const ms = rFmt(mR), bs = rFmt(bR), bAbsS = rFmtAbs(bR)
+      const x1s = rFmt(x1R), y1s = rFmt(y1R), x2s = rFmt(x2R), y2s = rFmt(y2R)
+      const dys = rFmt(dy), dxs = rFmt(dx)
+
+      // Point-slope left side: y − y₁ (handle y₁ negative/zero)
+      const psY = y1R.n === 0 ? 'y' : y1R.n < 0 ? `y + ${rFmtAbs(y1R)}` : `y − ${y1s}`
+      // Point-slope right side denominator: x − x₁
+      const psX = x1R.n === 0 ? 'x' : x1R.n < 0 ? `x + ${rFmtAbs(x1R)}` : `x − ${x1s}`
+
+      // Expand: m(x − x₁) = mx − m·x₁
+      const mx1R = rMul(mR, x1R)
+      const mx1F = rToF(mx1R)
+      const expandedRHS = mx1F >= 0
+        ? `${ms}x − ${rFmtAbs(mx1R)}`
+        : `${ms}x + ${rFmtAbs(mx1R)}`
+
+      // y₁ signed for "y = expandedRHS + y₁"
+      const y1Signed = y1R.n === 0 ? '' : y1R.n > 0 ? ` + ${y1s}` : ` − ${rFmtAbs(y1R)}`
+
+      let finalEq
+      if (mF === 0) finalEq = `y = ${bs}`
+      else if (bF === 0) finalEq = `y = ${ms}x`
+      else if (bF > 0) finalEq = `y = ${ms}x + ${bAbsS}`
+      else finalEq = `y = ${ms}x − ${bAbsS}`
+
+      const steps = [
+        { head: 'Step 1 — Find the slope', lines: [
+          `m = (y₂ − y₁) / (x₂ − x₁)`,
+          `  = (${y2s} − ${y1s}) / (${x2s} − ${x1s})`,
+          `  = ${dys} / ${dxs}`,
+          `  = ${ms}`,
+        ]},
+        { head: 'Step 2 — Point-slope form', lines: [
+          `y − y₁ = m(x − x₁)`,
+          `${psY} = ${ms}(${psX})`,
+        ]},
+        { head: 'Step 3 — Slope-intercept form', lines: [
+          `${psY} = ${expandedRHS}`,
+          `y = ${expandedRHS}${y1Signed}`,
+          finalEq,
+        ], hasFinal: true },
+      ]
+
+      const exact = buildExactLinear(mR, bR)
+      return exact ? { ...exact, steps } : null
+    }
+  }
+
+  // Float fallback
+  const mF = (y2f - y1f) / (x2f - x1f)
+  const bF = y1f - mF * x1f
+  const mR9 = R9(mF), bR9 = R9(bF)
+
+  const psY = y1f === 0 ? 'y' : y1f < 0 ? `y + ${Math.abs(R9(y1f))}` : `y − ${R9(y1f)}`
+  const psX = x1f === 0 ? 'x' : x1f < 0 ? `x + ${Math.abs(R9(x1f))}` : `x − ${R9(x1f)}`
+  const mx1 = R9(mR9 * x1f)
+  const expandedRHS = mx1 >= 0 ? `${mR9}x − ${mx1}` : `${mR9}x + ${Math.abs(mx1)}`
+  const y1Signed = y1f === 0 ? '' : R9(y1f) > 0 ? ` + ${R9(y1f)}` : ` − ${Math.abs(R9(y1f))}`
+  let finalEq
+  if (mR9 === 0) finalEq = `y = ${bR9}`
+  else if (bR9 === 0) finalEq = `y = ${mR9}x`
+  else if (bR9 > 0) finalEq = `y = ${mR9}x + ${bR9}`
+  else finalEq = `y = ${mR9}x − ${Math.abs(bR9)}`
+
+  const steps = [
+    { head: 'Step 1 — Find the slope', lines: [
+      `m = (y₂ − y₁) / (x₂ − x₁)`,
+      `  = (${ff(y2f)} − ${ff(y1f)}) / (${ff(x2f)} − ${ff(x1f)})`,
+      `  = ${ff(y2f - y1f)} / ${ff(x2f - x1f)}`,
+      `  = ${mR9}`,
+    ]},
+    { head: 'Step 2 — Point-slope form', lines: [
+      `y − y₁ = m(x − x₁)`,
+      `${psY} = ${mR9}(${psX})`,
+    ]},
+    { head: 'Step 3 — Slope-intercept form', lines: [
+      `${psY} = ${expandedRHS}`,
+      `y = ${expandedRHS}${y1Signed}`,
+      finalEq,
+    ], hasFinal: true },
+  ]
+
+  const result = makeLinear(mR9, bR9)
+  return result ? { ...result, steps } : null
+}
+
 const EMPTY_PIECE = { expr: '', cond: '' }
 
 function parseCondition(s) {
@@ -342,6 +470,7 @@ export default function FunctionInputs({
   const [showTip, setShowTip] = useState(false)
   const [inputMode, setInputMode] = useState('eq')
   const [psInputs, setPsInputs] = useState([EMPTY_PS, EMPTY_PS, EMPTY_PS])
+  const [tpInputs, setTpInputs] = useState([EMPTY_TP, EMPTY_TP, EMPTY_TP])
   const [pwInputs, setPwInputs] = useState([
     [{ ...EMPTY_PIECE }, { ...EMPTY_PIECE }],
     [{ ...EMPTY_PIECE }, { ...EMPTY_PIECE }],
@@ -388,6 +517,18 @@ export default function FunctionInputs({
     onUpdate(si, expr || '')
   }
 
+  const handleTpChange = (i, field, val) => {
+    const next = tpInputs.map((tp, j) => j === i ? { ...tp, [field]: val } : tp)
+    setTpInputs(next)
+    const computed = computeFromTwoPoints(next[i])
+    if (!computed) return
+    if (computed.vx !== null) {
+      onSetVertical(i, computed.vx)
+    } else {
+      onUpdate(i, computed.expr)
+    }
+  }
+
   const handlePsChange = (i, field, rawValue) => {
     const next = psInputs.map((ps, j) => j === i ? { ...ps, [field]: rawValue } : ps)
     setPsInputs(next)
@@ -402,19 +543,20 @@ export default function FunctionInputs({
 
   return (
     <div className="function-inputs">
-      {/* Tab bar */}
-      <div className="fi-tabs">
-        <button className={`fi-tab ${inputMode === 'eq' ? 'active' : ''}`} onClick={() => setInputMode('eq')}>
-          f(x) =
-        </button>
-        <button className={`fi-tab ${inputMode === 'ps' ? 'active' : ''}`} onClick={() => setInputMode('ps')}>
-          Point &amp; Slope
-        </button>
-        <button className={`fi-tab ${inputMode === 'pw' ? 'active' : ''}`} onClick={() => setInputMode('pw')}>
-          Piecewise
-        </button>
+      {/* Mode selector */}
+      <div className="fi-mode-row">
+        <select
+          className="fi-mode-select"
+          value={inputMode}
+          onChange={e => setInputMode(e.target.value)}
+        >
+          <option value="eq">f(x) = expression</option>
+          <option value="twopts">Two Points → Line</option>
+          <option value="ps">Point &amp; Slope</option>
+          <option value="pw">Piecewise</option>
+        </select>
         {inputMode === 'eq' && (
-          <div className="tip-anchor" style={{ marginLeft: 'auto' }}>
+          <div className="tip-anchor">
             <button className="tip-trigger" onClick={() => setShowTip(v => !v)} aria-label="Syntax tips">?</button>
             {showTip && (
               <div className="tip-popup" role="tooltip">
@@ -452,6 +594,66 @@ export default function FunctionInputs({
           </div>
         </div>
       ))}
+
+      {/* ── Two Points → Line tab ── */}
+      {inputMode === 'twopts' && (
+        <div className="tp-section">
+          <div className="tp-hint">Enter two points to find the equation of the line through them.</div>
+          {functions.map((fn, i) => {
+            const tp = tpInputs[i]
+            const computed = computeFromTwoPoints(tp)
+            return (
+              <div key={i} className="tp-slot">
+                <button
+                  className="color-toggle"
+                  style={{ background: fn.enabled ? colors[i] : '#2a2d3a', border: `2px solid ${colors[i]}` }}
+                  onClick={() => onToggle(i)}
+                  title={fn.enabled ? 'Hide' : 'Show'}
+                />
+                <div className="tp-body">
+                  <div className="tp-fi-label">f{i + 1}</div>
+                  <div className="tp-point-row">
+                    <span className="tp-pt-label">Point 1</span>
+                    <span className="tp-coord-lbl">x</span>
+                    <input className="tp-coord-input" type="text" value={tp.x1}
+                      onChange={e => handleTpChange(i, 'x1', e.target.value)} placeholder="0" />
+                    <span className="tp-coord-lbl">y</span>
+                    <input className="tp-coord-input" type="text" value={tp.y1}
+                      onChange={e => handleTpChange(i, 'y1', e.target.value)} placeholder="0" />
+                  </div>
+                  <div className="tp-point-row">
+                    <span className="tp-pt-label">Point 2</span>
+                    <span className="tp-coord-lbl">x</span>
+                    <input className="tp-coord-input" type="text" value={tp.x2}
+                      onChange={e => handleTpChange(i, 'x2', e.target.value)} placeholder="1" />
+                    <span className="tp-coord-lbl">y</span>
+                    <input className="tp-coord-input" type="text" value={tp.y2}
+                      onChange={e => handleTpChange(i, 'y2', e.target.value)} placeholder="2" />
+                  </div>
+                  {computed && <div className="tp-preview">{computed.display}</div>}
+                  {computed?.steps && (
+                    <div className="tp-steps">
+                      {computed.steps.map((s, si) => (
+                        <div key={si} className="tp-step">
+                          <div className="tp-step-head">{s.head}</div>
+                          {s.lines.map((line, li) => {
+                            const isFinal = s.hasFinal && li === s.lines.length - 1
+                            return (
+                              <div key={li} className={`tp-step-line${isFinal ? ' final' : ''}`}>
+                                {line}
+                              </div>
+                            )
+                          })}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
 
       {/* ── Point & Slope tab ── */}
       {inputMode === 'ps' && (

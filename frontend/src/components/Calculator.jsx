@@ -3,6 +3,7 @@ import katex from 'katex'
 import 'katex/dist/katex.min.css'
 import API from '../api'
 import './Calculator.css'
+import Formulas from './Formulas'
 
 function KTex({ math, display = false }) {
   const html = (() => {
@@ -59,6 +60,7 @@ function HistoryItem({ item, onReuse }) {
 }
 
 export default function Calculator() {
+  const [panelTab, setPanelTab] = useState('expressions')
   const [expression, setExpression] = useState('')
   const [variables, setVariables] = useState([{ name: '', value: '' }])
   const [result, setResult] = useState(null)
@@ -124,78 +126,93 @@ export default function Calculator() {
     inputRef.current?.focus()
   }
 
-  const hasVars = variables.some(v => v.name.trim() && v.value.trim())
-
   return (
     <div className="calc-root">
-      <div className="calc-main">
-        <div className="calc-card">
-          <div className="calc-section-label">Variables</div>
-          <div className="calc-vars">
-            {variables.map((v, i) => (
-              <VarRow key={i} index={i} name={v.name} value={v.value}
-                onChange={updateVar} onRemove={removeVar} />
-            ))}
-            <button className="calc-add-var" onClick={addVar}>+ Add variable</button>
-          </div>
-
-          <div className="calc-section-label" style={{ marginTop: 20 }}>Expression</div>
-          <div className="calc-input-row">
-            <input
-              ref={inputRef}
-              className="calc-expr-input"
-              value={expression}
-              onChange={e => { setExpression(e.target.value); setResult(null); setError(null) }}
-              onKeyDown={handleKey}
-              placeholder="e.g.  4*(3/2)^2 - 12*(3/2)  or  2*x + 5 = 11"
-              spellCheck={false}
-            />
-            <button className="calc-eval-btn" onClick={evaluate} disabled={loading || !expression.trim()}>
-              {loading ? '…' : '='}
-            </button>
-          </div>
-
-          {error && <div className="calc-error">{error}</div>}
-
-          {result && (
-            <div className="calc-result-block">
-              <div className="calc-result-main">
-                <KTex math={result.result_latex} display />
-                {result.numeric != null && (
-                  <div className="calc-result-decimal">
-                    ≈ {Number(result.numeric).toPrecision(10).replace(/\.?0+$/, '')}
-                  </div>
-                )}
-              </div>
-
-              {result.steps && result.steps.length > 1 && (
-                <div className="calc-steps">
-                  <div className="calc-steps-label">Step by step</div>
-                  {result.steps.map((s, i) => (
-                    <div key={i} className="calc-step">
-                      <span className="calc-step-label">{s.label}</span>
-                      <span className="calc-step-expr"><KTex math={s.expr} /></span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
+      <div className="calc-folder">
+        <div className="calc-panel-tabs">
+          <button
+            className={`calc-panel-tab${panelTab === 'expressions' ? ' active' : ''}`}
+            onClick={() => setPanelTab('expressions')}
+          >Expressions</button>
+          <button
+            className={`calc-panel-tab${panelTab === 'formulas' ? ' active' : ''}`}
+            onClick={() => setPanelTab('formulas')}
+          >Formulas</button>
         </div>
 
-        {history.length > 0 && (
-          <div className="calc-card calc-history-card">
-            <div className="calc-section-label">
-              History
-              <button className="calc-clear-hist" onClick={() => setHistory([])}>Clear</button>
-            </div>
-            <div className="calc-history-list">
-              {history.map((item, i) => (
-                <HistoryItem key={i} item={item} onReuse={reuseExpression} />
-              ))}
-            </div>
-          </div>
-        )}
+        <div className="calc-folder-body">
+          {panelTab === 'formulas' ? (
+            <Formulas />
+          ) : (
+            <>
+              <div className="calc-section-label">Variables</div>
+              <div className="calc-vars">
+                {variables.map((v, i) => (
+                  <VarRow key={i} index={i} name={v.name} value={v.value}
+                    onChange={updateVar} onRemove={removeVar} />
+                ))}
+                <button className="calc-add-var" onClick={addVar}>+ Add variable</button>
+              </div>
+
+              <div className="calc-section-label" style={{ marginTop: 20 }}>Expression</div>
+              <div className="calc-input-row">
+                <input
+                  ref={inputRef}
+                  className="calc-expr-input"
+                  value={expression}
+                  onChange={e => { setExpression(e.target.value); setResult(null); setError(null) }}
+                  onKeyDown={handleKey}
+                  placeholder="e.g.  4*(3/2)^2 - 12*(3/2)  or  2*x + 5 = 11"
+                  spellCheck={false}
+                />
+                <button className="calc-eval-btn" onClick={evaluate} disabled={loading || !expression.trim()}>
+                  {loading ? '…' : '='}
+                </button>
+              </div>
+
+              {error && <div className="calc-error">{error}</div>}
+
+              {result && (
+                <div className="calc-result-block">
+                  <div className="calc-result-main">
+                    <KTex math={result.result_latex} display />
+                    {result.numeric != null && (
+                      <div className="calc-result-decimal">
+                        ≈ {Number(result.numeric).toPrecision(10).replace(/\.?0+$/, '')}
+                      </div>
+                    )}
+                  </div>
+
+                  {result.steps && result.steps.length > 1 && (
+                    <div className="calc-steps">
+                      <div className="calc-steps-label">Step by step</div>
+                      {result.steps.map((s, i) => (
+                        <div key={i} className="calc-step">
+                          <span className="calc-step-label">{s.label}</span>
+                          <span className="calc-step-expr"><KTex math={s.expr} /></span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {history.length > 0 && (
+                <div className="calc-history-section">
+                  <div className="calc-section-label">
+                    History
+                    <button className="calc-clear-hist" onClick={() => setHistory([])}>Clear</button>
+                  </div>
+                  <div className="calc-history-list">
+                    {history.map((item, i) => (
+                      <HistoryItem key={i} item={item} onReuse={reuseExpression} />
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </div>
       </div>
     </div>
   )

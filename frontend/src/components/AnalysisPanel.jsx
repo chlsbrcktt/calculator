@@ -365,24 +365,63 @@ export default function AnalysisPanel({ analysis, color, index, onClose }) {
           <Fact label="Y-intercept" value={analysis.y_intercept ? `(0,\\ ${analysis.y_intercept})` : null}
             info={yIntStep ? { title: 'Finding the y-intercept', steps: [yIntStep] } : null} />
 
-          {analysis.roots && analysis.roots.length > 0 && (
-            <div className="fact-row">
-              <span className="fact-label">Zeros (roots)</span>
-              <span className="fact-value roots-list">
-                {analysis.roots.map((r, i) => (
-                  <span key={i} className="root-item">
-                    <KTex math={`x = ${r.exact}`} />
-                    {r.decimal !== 'complex' && r.decimal !== r.exact && (
-                      <span className="root-decimal">≈ {r.decimal}</span>
-                    )}
-                  </span>
-                ))}
-              </span>
-              {zerosStep && <InfoModal title="How to find zeros" steps={[zerosStep]} />}
-            </div>
-          )}
+          {analysis.roots && analysis.roots.length > 0 && (() => {
+            const realRoots = analysis.roots.filter(r => r.decimal !== 'complex')
+            const complexRoots = analysis.roots.filter(r => r.decimal === 'complex')
+            return (
+              <>
+                {realRoots.length > 0 && (
+                  <>
+                    <div className="fact-row">
+                      <span className="fact-label">X-Intercept{realRoots.length > 1 ? 's' : ''}</span>
+                      <span className="fact-value roots-list">
+                        {realRoots.map((r, i) => (
+                          <span key={i} className="root-item">
+                            <KTex math={`(${r.exact},\\ 0)`} />
+                            {r.decimal !== r.exact && (
+                              <span className="root-decimal">≈ ({r.decimal}, 0)</span>
+                            )}
+                          </span>
+                        ))}
+                      </span>
+                    </div>
+                    <div className="fact-row">
+                      <span className="fact-label">Real Zero{realRoots.length > 1 ? 's' : ''}</span>
+                      <span className="fact-value roots-list">
+                        {realRoots.map((r, i) => (
+                          <span key={i} className="root-item">
+                            <KTex math={`x = ${r.exact}`} />
+                            {r.decimal !== r.exact && (
+                              <span className="root-decimal">≈ {r.decimal}</span>
+                            )}
+                          </span>
+                        ))}
+                      </span>
+                      {zerosStep && <InfoModal title="How to find zeros" steps={[zerosStep]} />}
+                    </div>
+                  </>
+                )}
+                {complexRoots.length > 0 && (
+                  <div className="fact-row">
+                    <span className="fact-label">Complex roots</span>
+                    <span className="fact-value roots-list">
+                      {complexRoots.map((r, i) => (
+                        <span key={i} className="root-item">
+                          <KTex math={r.exact} />
+                        </span>
+                      ))}
+                    </span>
+                  </div>
+                )}
+                {realRoots.length === 0 && (
+                  <Fact label="X-Intercepts / Zeros" value="None (no real roots)"
+                    info={zerosStep ? { title: 'How to find zeros', steps: [zerosStep] } : null} />
+                )}
+              </>
+            )
+          })()}
           {analysis.roots && analysis.roots.length === 0 && (
-            <Fact label="Zeros (roots)" value="No real roots"
+            <Fact label="X-Intercepts / Zeros" value="None"
               info={zerosStep ? { title: 'How to find zeros', steps: [zerosStep] } : null} />
           )}
 
@@ -423,6 +462,27 @@ export default function AnalysisPanel({ analysis, color, index, onClose }) {
                   </span>
                 )}
               </span>
+              {analysis.inverse.steps && (
+                <InfoModal
+                  title="How to find the inverse"
+                  steps={[{ title: 'Finding the inverse function', content: analysis.inverse.steps }]}
+                />
+              )}
+            </div>
+          )}
+
+          {analysis.symmetry && (
+            <div className="fact-row">
+              <span className="fact-label">Even or Odd?</span>
+              <span className={`fact-value symmetry-badge symmetry-${analysis.symmetry.classification.toLowerCase()}`}>
+                {analysis.symmetry.classification}
+              </span>
+              {analysis.symmetry.steps && (
+                <InfoModal
+                  title="How to tell if a function is even or odd"
+                  steps={[{ title: 'Even / Odd symmetry test', content: analysis.symmetry.steps }]}
+                />
+              )}
             </div>
           )}
         </div>

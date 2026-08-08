@@ -269,6 +269,9 @@ def analyze_expression(raw_expr: str) -> dict:
     # Inverse
     result["inverse"] = _compute_inverse(expr_sympy, x, degree)
 
+    # Even / Odd symmetry
+    result["symmetry"] = _check_symmetry(expr_sympy, x)
+
     return result
 
 
@@ -487,7 +490,7 @@ def _classify(degree: Optional[int], expr, x) -> str:
 
 
 def _compute_inverse(expr_sympy, x, degree) -> Optional[dict]:
-    """Solve f(x) = y for x, return {branches: [...latex...], note: str}."""
+    """Solve f(x) = y for x, return {branches: [...latex...], note: str, steps: str}."""
     # Cubics and above produce unwieldy formulas — skip them
     if degree is not None and degree >= 3:
         return None
@@ -507,7 +510,7 @@ def _compute_inverse(expr_sympy, x, degree) -> Optional[dict]:
         # Skip branches with excessively complex LaTeX
         if len(tex_str) > 120:
             continue
-        branches.append(tex_str)
+        branches.append((tex_str, simplify(inv)))
 
     if not branches:
         return None
@@ -516,7 +519,86 @@ def _compute_inverse(expr_sympy, x, degree) -> Optional[dict]:
     if degree == 2 or len(branches) > 1:
         note = "Restrict the domain to one branch to make the inverse a function."
 
-    return {"branches": branches, "note": note}
+    branch_latex = [b[0] for b in branches]
+    branch_exprs = [b[1] for b in branches]
+
+    # Build step-by-step explanation
+    expr_latex = _latex_expr(expr_sympy)
+    lines = []
+    lines.append(f"**Step 1: Write the function as** $y = f(x)$")
+    lines.append(f"$$y = {expr_latex}$$")
+    lines.append("")
+    lines.append("**Step 2: Swap** $x$ **and** $y$")
+    swapped = _latex_expr(expr_sympy).replace('x', 'y')
+    lines.append(f"$$x = {swapped}$$")
+    lines.append("")
+    lines.append("**Step 3: Solve for** $y$")
+    lines.append("Rearrange the equation to isolate $y$:")
+    for inv_expr in branch_exprs:
+        lines.append(f"$$y = {_latex_expr(inv_expr)}$$")
+    lines.append("")
+    lines.append("**Step 4: Write using inverse notation**")
+    if len(branch_latex) == 1:
+        lines.append(f"$$f^{{-1}}(x) = {branch_latex[0]}$$")
+    else:
+        for bl in branch_latex:
+            lines.append(f"$$f^{{-1}}(x) = {bl}$$")
+    if note:
+        lines.append("")
+        lines.append(f"**Note:** {note}")
+
+    steps_content = "\n".join(lines)
+
+    return {"branches": branch_latex, "note": note, "steps": steps_content}
+
+
+def _check_symmetry(expr_sympy, x) -> Optional[dict]:
+    """Determine if f(x) is even, odd, or neither. Returns {classification, steps}."""
+    try:
+        f_neg = simplify(expr_sympy.subs(x, -x))
+        expr_latex = _latex_expr(expr_sympy)
+        f_neg_latex = _latex_expr(f_neg)
+
+        lines = []
+        lines.append("**Step 1: Find** $f(-x)$ **by substituting** $-x$ **for** $x$")
+        lines.append(f"$$f(-x) = {f_neg_latex}$$")
+        lines.append("")
+
+        diff_even = simplify(f_neg - expr_sympy)
+        diff_odd  = simplify(f_neg + expr_sympy)
+
+        if diff_even == 0:
+            classification = "Even"
+            lines.append("**Step 2: Compare** $f(-x)$ **to** $f(x)$")
+            lines.append(f"$$f(-x) = {f_neg_latex} = f(x)$$")
+            lines.append("")
+            lines.append("Since $f(-x) = f(x)$, the function is **even**.")
+            lines.append("")
+            lines.append("**Even functions** are symmetric about the **y-axis**.")
+        elif diff_odd == 0:
+            classification = "Odd"
+            neg_f_latex = _latex_expr(simplify(-expr_sympy))
+            lines.append("**Step 2: Compare** $f(-x)$ **to** $-f(x)$")
+            lines.append(f"$$f(-x) = {f_neg_latex}$$")
+            lines.append(f"$$-f(x) = {neg_f_latex}$$")
+            lines.append("")
+            lines.append("Since $f(-x) = -f(x)$, the function is **odd**.")
+            lines.append("")
+            lines.append("**Odd functions** are symmetric about the **origin**.")
+        else:
+            classification = "Neither"
+            neg_f_latex = _latex_expr(simplify(-expr_sympy))
+            lines.append("**Step 2: Check if** $f(-x) = f(x)$ **(even)**")
+            lines.append(f"$$f(-x) = {f_neg_latex} \\neq {expr_latex} = f(x)$$")
+            lines.append("")
+            lines.append("**Step 3: Check if** $f(-x) = -f(x)$ **(odd)**")
+            lines.append(f"$$f(-x) = {f_neg_latex} \\neq {neg_f_latex} = -f(x)$$")
+            lines.append("")
+            lines.append("Since neither condition holds, the function is **neither even nor odd**.")
+
+        return {"classification": classification, "steps": "\n".join(lines)}
+    except Exception:
+        return None
 
 
 def _end_behavior_text(expr_sympy, degree, poly, x) -> str:

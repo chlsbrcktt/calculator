@@ -1,0 +1,153 @@
+.formulas-root {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.formulas-select {
+  width: 100%;
+  border: 1px solid #e2e8f0;
+  border-radius: 7px;
+  padding: 8px 12px;
+  font-size: 13px;
+  color: #1e293b;
+  background: #f8fafc;
+  outline: none;
+  cursor: pointer;
+  transition: border-color 0.12s;
+  font-family: inherit;
+}
+
+.formulas-select:focus {
+  border-color: #3b82f6;
+  background: #fff;
+}
+
+.formulas-formula {
+  font-size: 13px;
+  font-family: ui-monospace, Consolas, monospace;
+  color: #475569;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 9px 12px;
+  line-height: 1.6;
+}
+
+.formulas-inputs {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.formulas-input-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.formulas-label {
+  font-size: 12px;
+  color: #64748b;
+  min-width: 130px;
+  flex-shrink: 0;
+}
+
+.formulas-input {
+  flex: 1;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 7px 10px;
+  font-size: 13px;
+  font-family: ui-monospace, Consolas, monospace;
+  color: #1e293b;
+  background: #fff;
+  outline: none;
+  transition: border-color 0.12s;
+  -moz-appearance: textfield;
+}
+
+.formulas-input::-webkit-outer-spin-button,
+.formulas-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+}
+
+.formulas-input:focus {
+  border-color: #3b82f6;
+}
+
+.formulas-input::placeholder {
+  color: #cbd5e1;
+  font-style: italic;
+}
+
+/* ── Paper-style step-by-step work ── */
+.formulas-paper {
+  background: #fefdf8;
+  border: 1px solid #e5e0c8;
+  border-radius: 8px;
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  font-family: ui-monospace, Consolas, 'Courier New', monospace;
+}
+
+.formulas-step-header {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #92836a;
+  margin-top: 10px;
+  margin-bottom: 4px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid #e5e0c8;
+  font-family: system-ui, sans-serif;
+}
+
+.formulas-step-header:first-child {
+  margin-top: 0;
+}
+
+.formulas-step-line {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 3px 0;
+  font-size: 14px;
+  color: #2d2a1e;
+  line-height: 1.6;
+}
+
+.formulas-step-line.final {
+  font-weight: 700;
+  color: #1d4ed8;
+  border-top: 1.5px solid #c8c3ad;
+  margin-top: 4px;
+  padding-top: 6px;
+}
+
+.formulas-step-expr {
+  flex: 1;
+  min-width: 0;
+}
+
+.formulas-step-note {
+  font-size: 11px;
+  color: #a89e82;
+  font-style: italic;
+  font-family: system-ui, -apple-system, sans-serif;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.formulas-error {
+  font-size: 12px;
+  color: #dc2626;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 6px;
+  padding: 8px 12px;
+}
