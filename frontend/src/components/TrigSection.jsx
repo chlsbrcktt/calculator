@@ -778,42 +778,36 @@ function AmpPeriod() {
 
 function InverseTrig() {
   const [fn, setFn] = useState('arcsin')
-  const [valStr, setValStr] = useState('-\\sqrt{2}/2')
-  // Map display values to numbers
-  const presets = [
-    { label: '0', val: 0 }, { label: '1/2', val: 0.5 }, { label: '-1/2', val: -0.5 },
-    { label: '√2/2', val: S2/2 }, { label: '-√2/2', val: -S2/2 },
-    { label: '√3/2', val: S3/2 }, { label: '-√3/2', val: -S3/2 },
-    { label: '1', val: 1 }, { label: '-1', val: -1 },
-    { label: '√3/3', val: S3/3 }, { label: '-√3/3', val: -S3/3 },
-    { label: '√3', val: S3 }, { label: '-√3', val: -S3 },
-  ]
-  const [presetIdx, setPresetIdx] = useState(3)
-  const inputVal = presets[presetIdx]?.val ?? 0
-  const inputLatex = presets[presetIdx]?.label ?? '?'
+  const [valStr, setValStr] = useState('-0.7071')
 
   const ranges = {
-    arcsin: { lo: -PI / 2, hi: PI / 2, latex: '\\left[-\\dfrac{\\pi}{2}, \\dfrac{\\pi}{2}\\right]' },
-    arccos: { lo: 0, hi: PI, latex: '[0, \\pi]' },
-    arctan: { lo: -PI / 2, hi: PI / 2, latex: '\\left(-\\dfrac{\\pi}{2}, \\dfrac{\\pi}{2}\\right)' },
+    arcsin: { latex: '\\left[-\\dfrac{\\pi}{2},\\ \\dfrac{\\pi}{2}\\right]', note: 'arcsin and arctan return angles in [−π/2, π/2]; arccos returns angles in [0, π].' },
+    arccos: { latex: '[0,\\ \\pi]', note: 'arccos returns an angle in [0, π] — always in Q1 or Q2.' },
+    arctan: { latex: '\\left(-\\dfrac{\\pi}{2},\\ \\dfrac{\\pi}{2}\\right)', note: 'arctan can take any real number and returns an angle in (−π/2, π/2).' },
   }
-  const range = ranges[fn]
   const fnNames = { arcsin: '\\sin^{-1}', arccos: '\\cos^{-1}', arctan: '\\tan^{-1}' }
 
-  let result = null, resultDeg = null
-  if (fn === 'arcsin') result = Math.asin(inputVal)
-  else if (fn === 'arccos') result = Math.acos(inputVal)
-  else result = Math.atan(inputVal)
+  const inputVal = parseFloat(valStr)
+  const valid = isFinite(inputVal)
+  const domainOk = fn === 'arctan' || (valid && Math.abs(inputVal) <= 1 + 1e-9)
+  const inputLatex = valid ? exact(inputVal) : '?'
 
-  resultDeg = toDeg(result)
-  const resultLatex = radLatex(result)
-  const absVal = Math.abs(inputVal)
-  const refAngleResult = Math.abs(result)
+  let result = null
+  if (valid && domainOk) {
+    if (fn === 'arcsin') result = Math.asin(Math.max(-1, Math.min(1, inputVal)))
+    else if (fn === 'arccos') result = Math.acos(Math.max(-1, Math.min(1, inputVal)))
+    else result = Math.atan(inputVal)
+  }
+  const ok = result !== null && isFinite(result)
+  const resultDeg = ok ? toDeg(result) : 0
+  const resultLatex = ok ? radLatex(result) : '\\text{undefined}'
+  const absVal = valid ? Math.abs(inputVal) : 0
+  const refAngleResult = ok ? Math.abs(result) : 0
 
   return (
     <div className="trig-solver">
       <h2 className="trig-solver-title">Inverse Trig Functions</h2>
-      <Explain text="Inverse trig functions answer: 'what angle has this trig value?' Each function has a restricted range so the answer is unique. arcsin and arctan return angles in [−π/2, π/2]; arccos returns angles in [0, π]." />
+      <Explain text="Inverse trig functions answer: 'what angle has this trig value?' Each has a restricted range so the answer is unique. Enter any decimal value — exact fractions like √2/2 ≈ 0.7071 will be recognized automatically." />
       <div className="trig-solver-body">
         <div>
           <div className="trig-inputs">
@@ -827,30 +821,33 @@ function InverseTrig() {
             </div>
             <div className="trig-input-group">
               <label>Value</label>
-              <select className="trig-select" value={presetIdx} onChange={e => setPresetIdx(parseInt(e.target.value))}>
-                {presets.map((p, i) => <option key={i} value={i}>{p.label}</option>)}
-              </select>
+              <input className="trig-input" value={valStr} onChange={e => setValStr(e.target.value)}
+                placeholder="e.g. -0.5, 0.866, -1" style={{ width: 130 }} />
             </div>
           </div>
-          <div className="trig-steps">
-            <Step num={1} title="State the problem">
-              <Line latex={`\\text{Find } \\theta = ${fnNames[fn]}\\!\\left(${inputLatex}\\right)`} />
-              <Note text={`We want the angle θ such that ${fn.replace('arc','')}(θ) = ${inputLatex}.`} />
-            </Step>
-            <Step num={2} title="Apply the range restriction">
-              <Line latex={`\\text{Range of } ${fnNames[fn]}: ${range.latex}`} />
-              <Note text={`The answer must fall in this interval — this is what makes the inverse unique.`} />
-            </Step>
-            <Step num={3} title="Find the reference angle from the unit circle">
-              <Line latex={'\\' + fn.replace('arc', '') + '\\!\\left(' + exact(absVal) + '\\right) = ' + radLatex(refAngleResult)} />
-            </Step>
-            <Step num={4} title="Apply sign based on range">
-              <Line latex={`\\theta = ${resultLatex} = ${fmt(result, 4)} \\text{ rad} \\approx ${fmt(resultDeg, 2)}^\\circ`} />
-            </Step>
-            <AnswerBox latex={`${fnNames[fn]}\\!\\left(${inputLatex}\\right) = ${resultLatex}`} />
-          </div>
+          <div className="trig-hint">Common exact values: 0, ±0.5, ±0.7071 (±√2/2), ±0.866 (±√3/2), ±1, ±0.5774 (±√3/3), ±1.7321 (±√3)</div>
+          {valid && !domainOk && <div className="trig-warning">Domain error: {fn} requires |value| ≤ 1.</div>}
+          {ok && (
+            <div className="trig-steps">
+              <Step num={1} title="State the problem">
+                <Line latex={`\\text{Find } \\theta = ${fnNames[fn]}\\!\\left(${inputLatex}\\right)`} />
+                <Note text={`We want the angle θ such that ${fn.replace('arc','')}(θ) = ${inputLatex}.`} />
+              </Step>
+              <Step num={2} title="Apply the range restriction">
+                <Line latex={`\\text{Range of } ${fnNames[fn]}: ${ranges[fn].latex}`} />
+                <Note text={ranges[fn].note} />
+              </Step>
+              <Step num={3} title="Find the reference angle">
+                <Line latex={`\\${fn.replace('arc','')}\\!\\left(${exact(absVal)}\\right) = ${radLatex(refAngleResult)} \\approx ${fmt(refAngleResult * 180 / PI, 2)}^\\circ`} />
+              </Step>
+              <Step num={4} title="Apply sign based on range">
+                <Line latex={`\\theta = ${resultLatex} \\approx ${fmt(result, 4)}\\text{ rad} \\approx ${fmt(resultDeg, 2)}^\\circ`} />
+              </Step>
+              <AnswerBox latex={`${fnNames[fn]}\\!\\left(${inputLatex}\\right) = ${resultLatex}`} />
+            </div>
+          )}
         </div>
-        <UnitCircleSVG angleDeg={resultDeg} />
+        {ok && <UnitCircleSVG angleDeg={resultDeg} />}
       </div>
     </div>
   )
@@ -859,17 +856,10 @@ function InverseTrig() {
 function CompositeTrig() {
   const [outer, setOuter] = useState('tan')
   const [inner, setInner] = useState('arcsin')
-  const [presetIdx, setPresetIdx] = useState(4)
+  const [valStr, setValStr] = useState('-0.5')
 
-  const presets = [
-    { label: '1/2', val: 0.5 }, { label: '-1/2', val: -0.5 },
-    { label: '√2/2', val: S2/2 }, { label: '-√2/2', val: -S2/2 },
-    { label: '√3/2', val: S3/2 }, { label: '-√3/2', val: -S3/2 },
-    { label: '1', val: 1 }, { label: '-1', val: -1 },
-    { label: '√3/3', val: S3/3 }, { label: '-√3/3', val: -S3/3 },
-  ]
-  const pval = presets[presetIdx]?.val ?? 0
-  const plab = presets[presetIdx]?.label ?? '?'
+  const pval = parseFloat(valStr)
+  const plab = isFinite(pval) ? exact(pval) : '?'
 
   let theta = null
   if (inner === 'arcsin') theta = Math.asin(pval)
@@ -921,11 +911,11 @@ function CompositeTrig() {
             </div>
             <div className="trig-input-group">
               <label>Value</label>
-              <select className="trig-select" value={presetIdx} onChange={e => setPresetIdx(parseInt(e.target.value))}>
-                {presets.map((p, i) => <option key={i} value={i}>{p.label}</option>)}
-              </select>
+              <input className="trig-input" value={valStr} onChange={e => setValStr(e.target.value)}
+                placeholder="e.g. -0.5, 0.866" style={{ width: 120 }} />
             </div>
           </div>
+          <div className="trig-hint">Enter any decimal (e.g. -0.5 = −½, 0.7071 ≈ √2/2, 0.866 ≈ √3/2)</div>
           <div className="trig-steps">
             <Step num={1} title="Let θ equal the inner expression">
               <Line latex={`\\theta = ${innerNames[inner]}(${plab}), \\text{ so } ${innerFn}(\\theta) = ${plab}`} />
@@ -950,105 +940,140 @@ function CompositeTrig() {
 }
 
 function TrigEquations() {
-  const PRESETS = [
-    {
-      label: 'cos θ + 1 = 0',
-      solve: () => {
-        return {
-          steps: [
-            { title: 'Isolate cos θ', lines: ['\\cos\\theta + 1 = 0', '\\cos\\theta = -1'], note: 'Subtract 1 from both sides.' },
-            { title: 'Find angles where cos = −1', lines: ['\\cos\\theta = -1 \\text{ at the point } (-1, 0)'], note: 'On the unit circle, cosine equals −1 only at θ = π.' },
-            { title: 'State all solutions on [0, 2π)', lines: ['\\theta = \\pi'] },
-          ],
-          answer: '\\theta = \\pi',
-          solutions: [{ deg: 180, color: '#059669' }],
-        }
-      }
-    },
-    {
-      label: 'tan(2θ) = −1',
-      solve: () => {
-        return {
-          steps: [
-            { title: 'Let x = 2θ, solve tan x = −1', lines: ['\\tan(x) = -1'], note: 'tan = −1 in Quadrant II and Quadrant IV.' },
-            { title: 'Reference angle', lines: ['\\tan(\\pi/4) = 1 \\Rightarrow \\theta_R = \\pi/4'], note: '' },
-            { title: 'Find x in [0, 4π) since x = 2θ and θ ∈ [0, 2π)', lines: [
-              'x = \\dfrac{3\\pi}{4},\\ \\dfrac{7\\pi}{4},\\ \\dfrac{11\\pi}{4},\\ \\dfrac{15\\pi}{4}'
-            ], note: 'Each coterminal solution adds π.' },
-            { title: 'Divide by 2 to get θ', lines: [
-              '\\theta = \\dfrac{3\\pi}{8},\\ \\dfrac{7\\pi}{8},\\ \\dfrac{11\\pi}{8},\\ \\dfrac{15\\pi}{8}'
-            ] },
-          ],
-          answer: '\\theta = \\dfrac{3\\pi}{8},\\ \\dfrac{7\\pi}{8},\\ \\dfrac{11\\pi}{8},\\ \\dfrac{15\\pi}{8}',
-          solutions: [
-            { deg: 67.5, color: '#059669' }, { deg: 157.5, color: '#059669' },
-            { deg: 247.5, color: '#059669' }, { deg: 337.5, color: '#059669' },
-          ],
-        }
-      }
-    },
-    {
-      label: 'cos θ = −√3/2',
-      solve: () => {
-        return {
-          steps: [
-            { title: 'Identify the reference angle', lines: ['\\cos(\\theta_R) = \\dfrac{\\sqrt{3}}{2}', '\\theta_R = \\dfrac{\\pi}{6} = 30^\\circ'], note: 'cos is √3/2 at 30°.' },
-            { title: 'cos is negative in Quadrants II and III', lines: [
-              '\\text{QII: } \\theta = \\pi - \\dfrac{\\pi}{6} = \\dfrac{5\\pi}{6}',
-              '\\text{QIII: } \\theta = \\pi + \\dfrac{\\pi}{6} = \\dfrac{7\\pi}{6}'
-            ], note: 'Apply ASTC: cosine is negative in QII and QIII.' },
-          ],
-          answer: '\\theta = \\dfrac{5\\pi}{6},\\ \\dfrac{7\\pi}{6}',
-          solutions: [{ deg: 150, color: '#059669' }, { deg: 210, color: '#7c3aed' }],
-        }
-      }
-    },
-    {
-      label: '2 − √3 csc θ = 0',
-      solve: () => {
-        return {
-          steps: [
-            { title: 'Isolate csc θ', lines: ['-\\sqrt{3}\\csc\\theta = -2', '\\csc\\theta = \\dfrac{2}{\\sqrt{3}} = \\dfrac{2\\sqrt{3}}{3}'], note: 'So sin θ = √3/2.' },
-            { title: 'Reference angle', lines: ['\\sin(\\pi/3) = \\dfrac{\\sqrt{3}}{2} \\Rightarrow \\theta_R = \\dfrac{\\pi}{3}'], note: '' },
-            { title: 'sin is positive in QI and QII', lines: [
-              '\\theta = \\dfrac{\\pi}{3},\\ \\pi - \\dfrac{\\pi}{3} = \\dfrac{2\\pi}{3}'
-            ] },
-          ],
-          answer: '\\theta = \\dfrac{\\pi}{3},\\ \\dfrac{2\\pi}{3}',
-          solutions: [{ deg: 60, color: '#059669' }, { deg: 120, color: '#7c3aed' }],
-        }
-      }
-    },
-  ]
+  const [fn, setFn] = useState('cos')
+  const [multStr, setMultStr] = useState('1')
+  const [rhsStr, setRhsStr] = useState('-1')
 
-  const [idx, setIdx] = useState(0)
-  const { steps, answer, solutions } = PRESETS[idx].solve()
+  const B = parseFloat(multStr)
+  const rhs = parseFloat(rhsStr)
+  const valid = isFinite(B) && B > 0 && isFinite(rhs)
+
+  const fnNames = { sin: '\\sin', cos: '\\cos', tan: '\\tan', csc: '\\csc', sec: '\\sec', cot: '\\cot' }
+
+  const solve = () => {
+    if (!valid) return null
+    let baseFn = fn, baseRhs = rhs
+    if (fn === 'csc') { baseFn = 'sin'; baseRhs = 1 / rhs }
+    else if (fn === 'sec') { baseFn = 'cos'; baseRhs = 1 / rhs }
+    else if (fn === 'cot') { baseFn = 'tan'; baseRhs = 1 / rhs }
+    if (!isFinite(baseRhs)) return { error: 'Value is out of domain for ' + fn }
+
+    const xRange = B * 2 * PI
+    let refAngle = 0, bases = []
+
+    if (baseFn === 'sin') {
+      if (Math.abs(baseRhs) > 1 + 1e-9) return { error: '|value| > 1 — sin has no solution outside [−1, 1]' }
+      const clamped = Math.max(-1, Math.min(1, baseRhs))
+      refAngle = Math.asin(Math.abs(clamped))
+      if (Math.abs(baseRhs) < 1e-9) bases = [0, PI]
+      else if (Math.abs(Math.abs(baseRhs) - 1) < 1e-9) bases = [clamped > 0 ? PI / 2 : 3 * PI / 2]
+      else if (clamped > 0) bases = [refAngle, PI - refAngle]
+      else bases = [PI + refAngle, 2 * PI - refAngle]
+    } else if (baseFn === 'cos') {
+      if (Math.abs(baseRhs) > 1 + 1e-9) return { error: '|value| > 1 — cos has no solution outside [−1, 1]' }
+      const clamped = Math.max(-1, Math.min(1, baseRhs))
+      const x0 = Math.acos(clamped)
+      refAngle = Math.min(x0, PI - x0)
+      bases = Math.abs(Math.sin(x0)) < 1e-9 ? [x0] : [x0, 2 * PI - x0]
+    } else {
+      const x0 = Math.atan(baseRhs)
+      refAngle = Math.abs(x0)
+      const base = ((x0 % PI) + PI) % PI
+      bases = [base]
+    }
+
+    const period = baseFn === 'tan' ? PI : 2 * PI
+    const allX = []
+    for (const base of bases) {
+      for (let k = 0; ; k++) {
+        const x = base + period * k
+        if (x > xRange - 1e-9) break
+        if (x >= -1e-9) allX.push(x)
+      }
+    }
+    allX.sort((a, b) => a - b)
+    const solutions = allX.map(x => x / B)
+    return { solutions, refAngle, baseFn, baseRhs, bases }
+  }
+
+  const res = valid ? solve() : null
+
+  const argLatex = B === 1 ? `\\theta` : `${B}\\theta`
+  const eqLatex = `${fnNames[fn]}(${argLatex}) = ${exact(rhs)}`
+
+  const quadrantNote = (baseFn, baseRhs) => {
+    if (baseFn === 'sin') return baseRhs >= 0 ? 'sin is positive in QI and QII' : 'sin is negative in QIII and QIV'
+    if (baseFn === 'cos') return baseRhs >= 0 ? 'cos is positive in QI and QIV' : 'cos is negative in QII and QIII'
+    return baseRhs >= 0 ? 'tan is positive in QI and QIII' : 'tan is negative in QII and QIV'
+  }
 
   return (
     <div className="trig-solver">
       <h2 className="trig-solver-title">Solve Trig Equations on [0, 2π)</h2>
-      <Explain text="Solving a trig equation means finding all angles in [0, 2π) where the equation is true. The key steps: isolate the trig function, find the reference angle from the unit circle, then use the ASTC rule to find all valid quadrants." />
+      <Explain text="Enter any trig function, angle multiplier, and right-hand side value. The solver finds all solutions in [0, 2π) by finding the reference angle, identifying which quadrants give the right sign, then generating all solutions." />
       <div className="trig-solver-body">
         <div>
           <div className="trig-inputs">
             <div className="trig-input-group">
-              <label>Equation</label>
-              <select className="trig-select" value={idx} onChange={e => setIdx(parseInt(e.target.value))}>
-                {PRESETS.map((p, i) => <option key={i} value={i}>{p.label}</option>)}
+              <label>Function</label>
+              <select className="trig-select" value={fn} onChange={e => setFn(e.target.value)}>
+                {['sin','cos','tan','csc','sec','cot'].map(f => <option key={f} value={f}>{f}</option>)}
               </select>
             </div>
+            <div className="trig-input-group">
+              <label>Multiplier B</label>
+              <input className="trig-input" value={multStr} onChange={e => setMultStr(e.target.value)}
+                placeholder="e.g. 1, 2" style={{ width: 70 }} />
+            </div>
+            <div className="trig-input-group">
+              <label>= (RHS value)</label>
+              <input className="trig-input" value={rhsStr} onChange={e => setRhsStr(e.target.value)}
+                placeholder="e.g. -1, 0.5" style={{ width: 100 }} />
+            </div>
           </div>
-          <div className="trig-steps">
-            {steps.map((s, i) => (
-              <Step key={i} num={i + 1} title={s.title}>
-                {s.lines.map((l, j) => <Line key={j} latex={l} />)}
-                {s.note && <Note text={s.note} />}
+          <div className="trig-hint">
+            Solves <strong>{fn}({B === 1 ? 'θ' : `${B}θ`}) = {rhsStr}</strong> for all θ in [0, 2π).
+            Use B &gt; 1 for problems like tan(2θ) = −1.
+          </div>
+          {res?.error && <div className="trig-warning">{res.error}</div>}
+          {res && !res.error && (
+            <div className="trig-steps">
+              <Step num={1} title="Write the equation">
+                <Line latex={eqLatex} />
+                {fn !== res.baseFn && (
+                  <Line latex={`\\Rightarrow \\${res.baseFn}(${argLatex}) = ${exact(res.baseRhs)}`} />
+                )}
               </Step>
-            ))}
-            <AnswerBox latex={answer} />
-          </div>
+              {B > 1 && (
+                <Step num={2} title={`Let x = ${B}θ, solve on [0, ${B === 2 ? '4' : fmt(B,1) + '·'}π)`}>
+                  <Line latex={`\\${res.baseFn}(x) = ${exact(res.baseRhs)}, \\quad x \\in [0,\\ ${B * 2}\\pi)`} />
+                  <Note text="We expand the interval for x so that after dividing by B, θ covers exactly one full revolution." />
+                </Step>
+              )}
+              <Step num={B > 1 ? 3 : 2} title="Find the reference angle">
+                <Line latex={`\\theta_R = ${radLatex(res.refAngle)} \\approx ${fmt(toDeg(res.refAngle), 2)}^\\circ`} />
+                <Note text={quadrantNote(res.baseFn, res.baseRhs)} />
+              </Step>
+              <Step num={B > 1 ? 4 : 3} title={B > 1 ? 'Solutions for x, then divide by B' : 'All solutions'}>
+                {res.solutions.length === 0
+                  ? <Line latex="\\text{No solution in } [0, 2\\pi)" />
+                  : res.solutions.map((s, i) => (
+                    <Line key={i} latex={`\\theta = ${radLatex(s)} \\approx ${fmt(toDeg(s), 2)}^\\circ`} />
+                  ))
+                }
+              </Step>
+              <AnswerBox latex={res.solutions.length === 0
+                ? '\\text{No solution}'
+                : `\\theta = ${res.solutions.map(s => radLatex(s)).join(',\\ ')}`
+              } />
+            </div>
+          )}
         </div>
-        <UnitCircleSVG angleDeg={solutions[0]?.deg ?? 0} solutions={solutions} showPoint={false} />
+        <UnitCircleSVG
+          angleDeg={res?.solutions?.[0] ? toDeg(res.solutions[0]) : 0}
+          solutions={res?.solutions?.map((s, i) => ({ deg: toDeg(s), color: i % 2 === 0 ? '#059669' : '#7c3aed' })) ?? []}
+          showPoint={false}
+        />
       </div>
     </div>
   )
@@ -1125,26 +1150,26 @@ function VerifyIdentity() {
 }
 
 function SumDifference() {
-  const SPECIAL = [
-    { label: '0°', deg: 0 }, { label: '30°', deg: 30 }, { label: '45°', deg: 45 },
-    { label: '60°', deg: 60 }, { label: '90°', deg: 90 }, { label: '120°', deg: 120 },
-    { label: '150°', deg: 150 }, { label: '180°', deg: 180 },
-  ]
-  const [formula, setFormula] = useState('sin-')
-  const [ai, setAi] = useState(0) // index for A
-  const [bi, setBi] = useState(2) // index for B (default 80 → 45°)
+  const [formula, setFormula] = useState('s-')
+  const [aStr, setAStr] = useState('20')
+  const [bStr, setBStr] = useState('80')
 
-  const A = SPECIAL[ai].deg, B = SPECIAL[bi].deg
-  const [fn, op] = formula.split('')
-  const combined = op === '+' ? A + B : A - B
+  const A = parseFloat(aStr), B = parseFloat(bStr)
+  const valid = isFinite(A) && isFinite(B)
+  const fn = formula[0], op = formula[1]  // 's'/'c' and '+'/ '-'
+  const combined = valid ? (op === '+' ? A + B : A - B) : 0
   const combNorm = ((combined % 360) + 360) % 360
-  const sinA = exact(Math.sin(toRad(A))), cosA = exact(Math.cos(toRad(A)))
-  const sinB = exact(Math.sin(toRad(B))), cosB = exact(Math.cos(toRad(B)))
-  const result = fn === 's'
-    ? (op === '+' ? Math.sin(toRad(A)) * Math.cos(toRad(B)) + Math.cos(toRad(A)) * Math.sin(toRad(B))
-      : Math.sin(toRad(A)) * Math.cos(toRad(B)) - Math.cos(toRad(A)) * Math.sin(toRad(B)))
-    : (op === '+' ? Math.cos(toRad(A)) * Math.cos(toRad(B)) - Math.sin(toRad(A)) * Math.sin(toRad(B))
-      : Math.cos(toRad(A)) * Math.cos(toRad(B)) + Math.sin(toRad(A)) * Math.sin(toRad(B)))
+  const sinA = valid ? exact(Math.sin(toRad(A))) : '?'
+  const cosA = valid ? exact(Math.cos(toRad(A))) : '?'
+  const sinB = valid ? exact(Math.sin(toRad(B))) : '?'
+  const cosB = valid ? exact(Math.cos(toRad(B))) : '?'
+  const result = valid
+    ? fn === 's'
+      ? (op === '+' ? Math.sin(toRad(A)) * Math.cos(toRad(B)) + Math.cos(toRad(A)) * Math.sin(toRad(B))
+        : Math.sin(toRad(A)) * Math.cos(toRad(B)) - Math.cos(toRad(A)) * Math.sin(toRad(B)))
+      : (op === '+' ? Math.cos(toRad(A)) * Math.cos(toRad(B)) - Math.sin(toRad(A)) * Math.sin(toRad(B))
+        : Math.cos(toRad(A)) * Math.cos(toRad(B)) + Math.sin(toRad(A)) * Math.sin(toRad(B)))
+    : 0
 
   const fnFull = fn === 's' ? 'sin' : 'cos'
   const formulaLatex = fn === 's' && op === '+'
@@ -1170,45 +1195,46 @@ function SumDifference() {
               </select>
             </div>
             <div className="trig-input-group">
-              <label>Angle A</label>
-              <select className="trig-select" value={ai} onChange={e => setAi(parseInt(e.target.value))}>
-                {SPECIAL.map((s, i) => <option key={i} value={i}>{s.label}</option>)}
-              </select>
+              <label>Angle A (degrees)</label>
+              <input className="trig-input" value={aStr} onChange={e => setAStr(e.target.value)}
+                placeholder="e.g. 20, 45, 75" style={{ width: 100 }} />
             </div>
             <div className="trig-input-group">
-              <label>Angle B</label>
-              <select className="trig-select" value={bi} onChange={e => setBi(parseInt(e.target.value))}>
-                {SPECIAL.map((s, i) => <option key={i} value={i}>{s.label}</option>)}
-              </select>
+              <label>Angle B (degrees)</label>
+              <input className="trig-input" value={bStr} onChange={e => setBStr(e.target.value)}
+                placeholder="e.g. 80, 30, 15" style={{ width: 100 }} />
             </div>
           </div>
-          <div className="trig-steps">
-            <Step num={1} title="Write the formula">
-              <Line latex={formulaLatex} />
-            </Step>
-            <Step num={2} title="Substitute values from unit circle">
-              <Line latex={`A = ${A}^\\circ,\\ B = ${B}^\\circ`} />
-              <Line latex={`\\sin(${A}^\\circ)=${sinA},\\ \\cos(${A}^\\circ)=${cosA}`} />
-              <Line latex={`\\sin(${B}^\\circ)=${sinB},\\ \\cos(${B}^\\circ)=${cosB}`} />
-            </Step>
-            <Step num={3} title="Compute">
-              {fn === 's' ? (
-                <>
-                  <Line latex={`= (${sinA})(${cosB}) ${op} (${cosA})(${sinB})`} />
-                  <Line latex={`= ${exact(result)}`} />
-                </>
-              ) : (
-                <>
-                  <Line latex={`= (${cosA})(${cosB}) ${op === '+' ? '-' : '+'} (${sinA})(${sinB})`} />
-                  <Line latex={`= ${exact(result)}`} />
-                </>
-              )}
-              <Note text={`This equals ${fnFull}(${combined}°) = ${fnFull}(${combNorm}°)`} />
-            </Step>
-            <AnswerBox latex={`${fnFull}(${A}^\\circ ${op} ${B}^\\circ) = ${exact(result)}`} />
-          </div>
+          {valid && (
+            <div className="trig-steps">
+              <Step num={1} title="Write the formula">
+                <Line latex={formulaLatex} />
+              </Step>
+              <Step num={2} title="Look up values for each angle">
+                <Line latex={`A = ${fmt(A,1)}^\\circ,\\ B = ${fmt(B,1)}^\\circ`} />
+                <Line latex={`\\sin(${fmt(A,1)}^\\circ)=${sinA},\\ \\cos(${fmt(A,1)}^\\circ)=${cosA}`} />
+                <Line latex={`\\sin(${fmt(B,1)}^\\circ)=${sinB},\\ \\cos(${fmt(B,1)}^\\circ)=${cosB}`} />
+                <Note text="For non-special angles, decimal approximations are used." />
+              </Step>
+              <Step num={3} title="Substitute and compute">
+                {fn === 's' ? (
+                  <>
+                    <Line latex={`= (${sinA})(${cosB}) ${op === '+' ? '+' : '-'} (${cosA})(${sinB})`} />
+                    <Line latex={`= ${exact(result)}`} />
+                  </>
+                ) : (
+                  <>
+                    <Line latex={`= (${cosA})(${cosB}) ${op === '+' ? '-' : '+'} (${sinA})(${sinB})`} />
+                    <Line latex={`= ${exact(result)}`} />
+                  </>
+                )}
+                <Note text={`This equals ${fnFull}(${fmt(combined,1)}°) = ${fnFull}(${fmt(combNorm,1)}°)`} />
+              </Step>
+              <AnswerBox latex={`${fnFull}(${fmt(A,1)}^\\circ ${op === '+' ? '+' : '-'} ${fmt(B,1)}^\\circ) = ${exact(result)}`} />
+            </div>
+          )}
         </div>
-        <UnitCircleSVG angleDeg={combNorm} />
+        {valid && <UnitCircleSVG angleDeg={combNorm} />}
       </div>
     </div>
   )
