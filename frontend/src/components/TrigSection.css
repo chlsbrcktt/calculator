@@ -1,0 +1,328 @@
+/* ─── Layout ──────────────────────────────────────────────────────────────── */
+.trig-layout {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.trig-sidebar {
+  width: 210px;
+  flex-shrink: 0;
+  overflow-y: auto;
+  border-right: 1px solid #e2e8f0;
+  background: #f8fafc;
+  padding: 12px 0 24px;
+}
+
+.trig-sidebar-group {
+  padding: 0 0 6px;
+  margin-bottom: 4px;
+}
+
+.trig-sidebar-group-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: #94a3b8;
+  padding: 10px 14px 4px;
+}
+
+.trig-sidebar-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  padding: 7px 14px 7px 18px;
+  font-size: 13px;
+  color: #374151;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+  border-left: 3px solid transparent;
+}
+
+.trig-sidebar-item:hover {
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.trig-sidebar-item.active {
+  background: #dbeafe;
+  color: #1d4ed8;
+  font-weight: 600;
+  border-left-color: #3b82f6;
+}
+
+.trig-main {
+  flex: 1;
+  overflow-y: auto;
+  padding: 28px 32px 40px;
+  background: #ffffff;
+}
+
+/* ─── Solver ──────────────────────────────────────────────────────────────── */
+.trig-solver {
+  max-width: 860px;
+}
+
+.trig-solver-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 0 0 10px;
+}
+
+.trig-explain {
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-left: 3px solid #3b82f6;
+  border-radius: 6px;
+  padding: 10px 14px;
+  font-size: 13px;
+  color: #1e3a5f;
+  line-height: 1.65;
+  margin-bottom: 20px;
+}
+
+/* ─── Inputs ──────────────────────────────────────────────────────────────── */
+.trig-inputs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-bottom: 22px;
+  align-items: flex-end;
+}
+
+.trig-input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.trig-input-group label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.trig-input {
+  border: 1px solid #cbd5e1;
+  border-radius: 5px;
+  padding: 6px 10px;
+  font-size: 14px;
+  color: #1e293b;
+  width: 90px;
+  background: #ffffff;
+  transition: border-color 0.15s;
+}
+
+.trig-input:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px #bfdbfe;
+}
+
+.trig-select {
+  border: 1px solid #cbd5e1;
+  border-radius: 5px;
+  padding: 6px 10px;
+  font-size: 13px;
+  color: #1e293b;
+  background: #ffffff;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+
+.trig-select:focus {
+  outline: none;
+  border-color: #3b82f6;
+}
+
+/* ─── Two-column body (steps + diagram) ──────────────────────────────────── */
+.trig-solver-body {
+  display: flex;
+  gap: 28px;
+  align-items: flex-start;
+}
+
+.trig-solver-body > div:first-child {
+  flex: 1;
+  min-width: 0;
+}
+
+/* ─── Steps ───────────────────────────────────────────────────────────────── */
+.trig-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.trig-step {
+  display: grid;
+  grid-template-columns: 56px 1fr;
+  column-gap: 10px;
+  padding: 12px 0;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.trig-step:last-child {
+  border-bottom: none;
+}
+
+.trig-step-num {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: #94a3b8;
+  padding-top: 2px;
+}
+
+.trig-step-body {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.trig-step-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 2px;
+}
+
+.trig-step-line {
+  font-size: 14px;
+  color: #1e293b;
+  padding: 1px 0;
+}
+
+.trig-step-note {
+  font-size: 12px;
+  color: #64748b;
+  line-height: 1.5;
+  font-style: italic;
+}
+
+/* ─── Answer box ──────────────────────────────────────────────────────────── */
+.trig-answer-box {
+  margin-top: 14px;
+  border: 2px solid #334155;
+  border-radius: 6px;
+  padding: 10px 16px;
+  background: #f8fafc;
+  font-size: 15px;
+  color: #1e293b;
+  display: inline-block;
+  min-width: 120px;
+}
+
+/* ─── Six-function grid ───────────────────────────────────────────────────── */
+.trig-six-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.trig-six-cell {
+  border: 1px solid #e2e8f0;
+  border-radius: 5px;
+  padding: 7px 10px;
+  background: #f8fafc;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.trig-six-label {
+  font-size: 11px;
+  color: #64748b;
+}
+
+.trig-six-val {
+  font-size: 14px;
+  color: #1e293b;
+  font-weight: 600;
+}
+
+/* ─── Diagram (SVG container) ─────────────────────────────────────────────── */
+.trig-diagram {
+  width: 220px;
+  height: 180px;
+  flex-shrink: 0;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #fafbfc;
+  margin-top: 4px;
+}
+
+/* ─── Identity reference box ──────────────────────────────────────────────── */
+.trig-identity-box {
+  flex-shrink: 0;
+  width: 220px;
+}
+
+.trig-identity-note {
+  background: #fefdf8;
+  border: 1px solid #e5e0c8;
+  border-radius: 8px;
+  padding: 12px 14px;
+  font-size: 13px;
+  color: #374151;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.trig-identity-note strong {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #94a3b8;
+}
+
+/* ─── KaTeX overrides ─────────────────────────────────────────────────────── */
+.katex {
+  color: #1e293b !important;
+}
+
+.katex-display {
+  margin: 6px 0 !important;
+}
+
+.katex-error {
+  color: #dc2626;
+  font-size: 12px;
+  font-family: ui-monospace, monospace;
+}
+
+.katex-block-wrap {
+  display: block;
+  overflow-x: auto;
+  padding: 2px 0;
+}
+
+.katex-inline-wrap {
+  display: inline;
+}
+
+/* ─── Responsive ─────────────────────────────────────────────────────────── */
+@media (max-width: 700px) {
+  .trig-sidebar {
+    width: 160px;
+  }
+  .trig-main {
+    padding: 16px;
+  }
+  .trig-solver-body {
+    flex-direction: column;
+  }
+  .trig-diagram {
+    width: 100%;
+  }
+}

@@ -11,10 +11,12 @@ const Geometry         = lazy(() => import('./components/Geometry'))
 const CalculusSurfaces = lazy(() => import('./components/CalculusSurfaces'))
 const Statistics       = lazy(() => import('./components/Statistics'))
 const Physics          = lazy(() => import('./components/Physics'))
+const TrigSection      = lazy(() => import('./components/TrigSection'))
 
 const TABS = [
   { id: 'calculator', label: 'Calculator' },
   { id: 'functions', label: 'Functions' },
+  { id: 'trig',       label: 'Trig' },
   { id: 'geometry',  label: 'Geometry' },
   { id: 'linalg',    label: 'Linear Algebra' },
   { id: 'calculus',  label: 'Calculus & Surfaces' },
@@ -244,6 +246,7 @@ export default function App() {
       ) : (
         <Suspense fallback={<div style={{flex:1,display:'flex',alignItems:'center',justifyContent:'center',color:'#334155'}}>Loading…</div>}>
           {activeTab === 'calculator' && <Calculator />}
+          {activeTab === 'trig'      && <TrigSection />}
           {activeTab === 'geometry' && <Geometry />}
           {activeTab === 'linalg'   && <LinearAlgebra />}
           {activeTab === 'calculus' && <CalculusSurfaces />}
