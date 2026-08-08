@@ -64,6 +64,89 @@ function renderContent(text) {
   ))
 }
 
+function buildSynSteps(synDiv) {
+  const fmt = v => String(v)
+  const { c, top_row: top, mult_row: mults, result_row: result, denom_latex, quotient_latex } = synDiv
+  const steps = []
+
+  steps.push(
+    `Write c = ${fmt(c)} (the zero of the divisor) on the left. ` +
+    `Write the numerator's coefficients across the top: ${top.map(fmt).join(', ')}.`
+  )
+  steps.push(`Bring down the first coefficient, ${fmt(top[0])}, straight to the bottom row.`)
+
+  for (let i = 0; i < mults.length; i++) {
+    const m = mults[i]
+    const mSign = m < 0 ? `(${fmt(m)})` : fmt(m)
+    steps.push(
+      `Multiply c by the last bottom-row value: ${fmt(c)} × ${fmt(result[i])} = ${fmt(m)}. ` +
+      `Write this under the next coefficient, ${fmt(top[i + 1])}.`
+    )
+    const addend = top[i + 1]
+    const addSign = m < 0 ? `(${fmt(m)})` : `${fmt(m)}`
+    steps.push(`Add: ${fmt(addend)} + ${addSign} = ${fmt(result[i + 1])}. This goes in the bottom row.`)
+  }
+
+  const quotCoeffs = result.slice(0, -1)
+  const rem = result[result.length - 1]
+  steps.push(
+    `Read the bottom row. The first ${quotCoeffs.length} value${quotCoeffs.length > 1 ? 's' : ''} ` +
+    `[${quotCoeffs.map(fmt).join(', ')}] are the quotient coefficients → quotient = ` +
+    `${quotient_latex}. The last value, ${fmt(rem)}, is the remainder.`
+  )
+
+  return steps
+}
+
+function SyntheticDivisionPaper({ synDiv }) {
+  if (!synDiv) return null
+  const fmt = v => String(v)
+  const n = synDiv.top_row.length
+  const steps = buildSynSteps(synDiv)
+
+  return (
+    <div className="syn-paper">
+      <div className="syn-tableau">
+        <div className="syn-row">
+          <span className="syn-c-col">{fmt(synDiv.c)}</span>
+          <span className="syn-vbar">│</span>
+          {synDiv.top_row.map((v, i) => (
+            <span key={i} className="syn-cell">{fmt(v)}</span>
+          ))}
+        </div>
+        <div className="syn-row">
+          <span className="syn-c-col"></span>
+          <span className="syn-vbar">│</span>
+          <span className="syn-cell"></span>
+          {synDiv.mult_row.map((v, i) => (
+            <span key={i} className="syn-cell syn-cell-mult">{fmt(v)}</span>
+          ))}
+        </div>
+        <div className="syn-row syn-result-row">
+          <span className="syn-c-col"></span>
+          <span className="syn-vbar syn-vbar-hidden"></span>
+          {synDiv.result_row.map((v, i) => (
+            <span key={i} className={`syn-cell syn-cell-result${i === n - 1 ? ' syn-cell-rem' : ''}`}>
+              {fmt(v)}
+            </span>
+          ))}
+        </div>
+      </div>
+
+      <ol className="syn-steps">
+        {steps.map((s, i) => (
+          <li key={i} className="syn-step">{s}</li>
+        ))}
+      </ol>
+
+      <div className="syn-confirm">
+        As x → ±∞, the remainder term vanishes, confirming the asymptote{' '}
+        <KTex math={`y = ${synDiv.quotient_latex}`} />.
+      </div>
+    </div>
+  )
+}
+
 function InfoModal({ title, steps }) {
   const [open, setOpen] = useState(false)
   if (!steps || steps.length === 0) return null
@@ -80,12 +163,12 @@ function InfoModal({ title, steps }) {
             <div className="info-modal-body">
               {steps.map((step, i) => (
                 <div key={i} className="step-item">
-                  {steps.length > 1 && <div className="step-num">Step {i + 1}</div>}
+                  {steps.length > 1 && <div className="step-num">{step.label ?? `Step ${i + 1}`}</div>}
                   <div className="step-title" style={steps.length === 1 ? { gridColumn: '1 / -1' } : undefined}>
                     {step.title}
                   </div>
                   <div className="step-body" style={steps.length === 1 ? { gridColumn: '1 / -1' } : undefined}>
-                    {renderContent(step.content)}
+                    {step.component ?? renderContent(step.content)}
                   </div>
                 </div>
               ))}
@@ -314,6 +397,19 @@ export default function AnalysisPanel({ analysis, color, index, onClose }) {
   const haStepsContent = analysis.horizontal_asymptote_steps
     ? [{ title: 'How to find horizontal asymptotes', content: analysis.horizontal_asymptote_steps }]
     : null
+  const obliqAsym = analysis.oblique_asymptotes || []
+  const synDiv = obliqAsym.length > 0 ? obliqAsym[0].synthetic_division : null
+
+  const oaStepsContent = analysis.oblique_asymptote_steps
+    ? [
+        { title: 'Polynomial long division', content: analysis.oblique_asymptote_steps },
+        ...(synDiv ? [{
+          label: 'Alt',
+          title: 'Synthetic division (paper)',
+          component: <SyntheticDivisionPaper synDiv={synDiv} />,
+        }] : []),
+      ]
+    : null
 
   const vaDisplayValue = vertAsym.length > 0
     ? vertAsym.map(va => `x = ${va.x}`).join(',\\quad ')
@@ -445,6 +541,14 @@ export default function AnalysisPanel({ analysis, color, index, onClose }) {
           {showAsymptotes && (
             <Fact label="Horizontal asymptotes" value={haDisplayValue}
               info={haStepsContent ? { title: 'Finding horizontal asymptotes', steps: haStepsContent } : null} />
+          )}
+
+          {obliqAsym.length > 0 && (
+            <Fact
+              label="Oblique asymptote"
+              value={obliqAsym.map(oa => `y = ${oa.y}`).join(',\\quad ')}
+              info={oaStepsContent ? { title: 'Finding the oblique asymptote', steps: oaStepsContent } : null}
+            />
           )}
 
           {analysis.inverse && (

@@ -122,6 +122,112 @@
   font-size: 12px;
 }
 
+/* ── Synthetic division paper ── */
+.syn-paper {
+  background: #fefdf8;
+  border: 1px solid #e5e0c8;
+  border-radius: 8px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.syn-intro {
+  font-size: 13px;
+  color: #475569;
+}
+
+.syn-tableau {
+  display: flex;
+  flex-direction: column;
+  font-family: ui-monospace, Consolas, 'Courier New', monospace;
+  font-size: 15px;
+  width: fit-content;
+}
+
+.syn-row {
+  display: flex;
+  align-items: center;
+}
+
+.syn-c-col {
+  min-width: 36px;
+  text-align: right;
+  padding-right: 6px;
+  font-weight: 700;
+  color: #1d4ed8;
+  flex-shrink: 0;
+}
+
+.syn-vbar {
+  color: #475569;
+  padding-right: 4px;
+  flex-shrink: 0;
+}
+
+.syn-vbar-hidden {
+  visibility: hidden;
+}
+
+.syn-cell {
+  width: 52px;
+  text-align: center;
+  padding: 3px 0;
+}
+
+.syn-cell-mult {
+  color: #64748b;
+  font-size: 13px;
+}
+
+.syn-result-row {
+  border-top: 2px solid #334155;
+}
+
+.syn-cell-result {
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.syn-cell-rem {
+  color: #dc2626 !important;
+}
+
+.syn-labels {
+  display: flex;
+  gap: 20px;
+  font-size: 13px;
+  color: #475569;
+  flex-wrap: wrap;
+}
+
+.syn-rem-label {
+  color: #dc2626;
+}
+
+.syn-steps {
+  margin: 0;
+  padding-left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.syn-step {
+  font-size: 13px;
+  color: #374151;
+  line-height: 1.5;
+}
+
+.syn-confirm {
+  font-size: 12px;
+  color: #64748b;
+  line-height: 1.5;
+  border-top: 1px solid #e5e0c8;
+  padding-top: 8px;
+}
+
 .symmetry-badge {
   font-size: 13px;
   font-weight: 600;

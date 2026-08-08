@@ -182,8 +182,10 @@ def analyze_expression(raw_expr: str) -> dict:
         "linear_forms": None,
         "vertical_asymptotes": [],
         "horizontal_asymptotes": [],
+        "oblique_asymptotes": [],
         "vertical_asymptote_steps": "",
         "horizontal_asymptote_steps": "",
+        "oblique_asymptote_steps": "",
     }
 
     # Expanded form
@@ -263,8 +265,10 @@ def analyze_expression(raw_expr: str) -> dict:
     asym = _find_asymptotes(expr_sympy, x)
     result["vertical_asymptotes"] = asym["vertical"]
     result["horizontal_asymptotes"] = asym["horizontal"]
+    result["oblique_asymptotes"] = asym["oblique"]
     result["vertical_asymptote_steps"] = asym["vertical_steps"]
     result["horizontal_asymptote_steps"] = asym["horizontal_steps"]
+    result["oblique_asymptote_steps"] = asym["oblique_steps"]
 
     # Inverse
     result["inverse"] = _compute_inverse(expr_sympy, x, degree)
@@ -339,11 +343,68 @@ def _find_asymptotes(expr_sympy, x) -> dict:
     except Exception:
         pass
 
+    # Oblique asymptote — rational only, deg(numerator) == deg(denominator) + 1
+    oblique = []
+    oblique_steps = ""
+    try:
+        numer, denom = sp.fraction(sp.cancel(expr_sympy))
+        if denom not in (sp.Integer(1), sp.Integer(-1)):
+            if numer.is_polynomial(x) and denom.is_polynomial(x):
+                poly_n = sp.Poly(numer, x)
+                poly_d = sp.Poly(denom, x)
+                if int(poly_n.degree()) == int(poly_d.degree()) + 1:
+                    quotient, remainder = sp.div(poly_n, poly_d, x, domain='QQ')
+                    oblique_expr = quotient.as_expr()
+                    oblique_steps = _oblique_asymptote_steps(numer, denom, oblique_expr, remainder.as_expr(), x)
+
+                    # Synthetic division data (only when denominator is linear)
+                    syn_div = None
+                    if int(poly_d.degree()) == 1:
+                        try:
+                            c_list = solve(denom, x)
+                            if c_list and c_list[0].is_real:
+                                c_val = c_list[0]
+                                n_deg = int(poly_n.degree())
+                                coeffs = [poly_n.nth(n_deg - i) for i in range(n_deg + 1)]
+
+                                work = [coeffs[0]]
+                                mults = []
+                                for _i in range(1, len(coeffs)):
+                                    _m = simplify(c_val * work[-1])
+                                    mults.append(_m)
+                                    work.append(simplify(coeffs[_i] + _m))
+
+                                def _fnum(v):
+                                    try:
+                                        f = float(v)
+                                        return int(round(f)) if abs(f - round(f)) < 1e-9 else round(f, 6)
+                                    except Exception:
+                                        return str(v)
+
+                                syn_div = {
+                                    "c": _fnum(c_val),
+                                    "c_latex": _latex_expr(c_val),
+                                    "top_row": [_fnum(c) for c in coeffs],
+                                    "mult_row": [_fnum(m) for m in mults],
+                                    "result_row": [_fnum(w) for w in work],
+                                    "quotient_latex": _latex_expr(oblique_expr),
+                                    "remainder_val": _fnum(work[-1]),
+                                    "denom_latex": _latex_expr(denom),
+                                }
+                        except Exception:
+                            pass
+
+                    oblique = [{"y": _latex_expr(oblique_expr), "synthetic_division": syn_div}]
+    except Exception:
+        pass
+
     return {
         "vertical": vert,
         "horizontal": horiz,
+        "oblique": oblique,
         "vertical_steps": _vertical_asymptote_steps(expr_sympy, x, vert),
         "horizontal_steps": _horizontal_asymptote_steps(expr_sympy, x, horiz),
+        "oblique_steps": oblique_steps,
     }
 
 
@@ -402,6 +463,36 @@ def _vertical_asymptote_steps(expr_sympy, x, vert) -> str:
     else:
         lines.append("**Result: No vertical asymptotes.**")
 
+    return "\n\n".join(lines)
+
+
+def _oblique_asymptote_steps(numer, denom, quotient_expr, remainder_expr, x) -> str:
+    lines = []
+    lines.append(
+        "An **oblique (slant) asymptote** exists when the degree of the numerator is "
+        "exactly one more than the degree of the denominator. Find it by **polynomial long division** — "
+        "the asymptote is the quotient (ignore the remainder)."
+    )
+    numer_latex  = _latex_expr(numer)
+    denom_latex  = _latex_expr(denom)
+    quot_latex   = _latex_expr(quotient_expr)
+    rem_latex    = _latex_expr(remainder_expr)
+
+    lines.append(
+        f"**Step 1: Confirm degrees**\n\n"
+        f"- Numerator: ${numer_latex}$ — degree {int(sp.Poly(numer, x).degree())}\n\n"
+        f"- Denominator: ${denom_latex}$ — degree {int(sp.Poly(denom, x).degree())}\n\n"
+        f"Degree of numerator = degree of denominator + 1 ✓"
+    )
+    lines.append(
+        f"**Step 2: Perform polynomial long division**\n\n"
+        f"$$\\frac{{{numer_latex}}}{{{denom_latex}}} = {quot_latex} + \\frac{{{rem_latex}}}{{{denom_latex}}}$$"
+    )
+    lines.append(
+        f"**Step 3: Identify the oblique asymptote**\n\n"
+        f"As $x \\to \\pm\\infty$, the remainder term $\\dfrac{{{rem_latex}}}{{{denom_latex}}} \\to 0$, so:\n\n"
+        f"$$y = {quot_latex}$$"
+    )
     return "\n\n".join(lines)
 
 
@@ -494,6 +585,18 @@ def _compute_inverse(expr_sympy, x, degree) -> Optional[dict]:
     # Cubics and above produce unwieldy formulas — skip them
     if degree is not None and degree >= 3:
         return None
+
+    # For rational functions (degree=None), inverting p(x)/q(x) = y means solving
+    # p(x) - y·q(x) = 0, whose degree is max(deg p, deg q). Skip if >= 3 to avoid hangs.
+    if degree is None:
+        try:
+            _n, _d = sp.fraction(sp.cancel(expr_sympy))
+            if _d not in (sp.Integer(1), sp.Integer(-1)):
+                if _n.is_polynomial(x) and _d.is_polynomial(x):
+                    if max(int(sp.Poly(_n, x).degree()), int(sp.Poly(_d, x).degree())) >= 3:
+                        return None
+        except Exception:
+            pass
 
     y = symbols('y')
     try:
