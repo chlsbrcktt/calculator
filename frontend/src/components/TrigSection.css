@@ -337,6 +337,37 @@
   }
 }
 
+.trig-type-tabs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.trig-type-tab {
+  padding: 6px 14px;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  background: #f8fafc;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.trig-type-tab:hover {
+  background: #e2e8f0;
+  color: #1e293b;
+}
+
+.trig-type-tab.active {
+  background: #2563eb;
+  color: #ffffff;
+  border-color: #2563eb;
+  font-weight: 600;
+}
+
 .trig-hint {
   font-size: 11px;
   color: #94a3b8;

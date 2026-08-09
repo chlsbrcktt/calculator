@@ -1016,49 +1016,58 @@ function CompositeTrig() {
 }
 
 function TrigEquations() {
+  const [type, setType] = useState('simple')
+
+  // Simple
   const [fn, setFn] = useState('cos')
   const [multStr, setMultStr] = useState('1')
   const [rhsStr, setRhsStr] = useState('-1')
 
-  const B = parseFloat(multStr)
-  const rhs = parseFloat(rhsStr)
-  const valid = isFinite(B) && B > 0 && isFinite(rhs)
+  // Quadratic: a·fn²(θ) + b·fn(θ) + c = 0
+  const [qFn, setQFn] = useState('cos')
+  const [aStr, setAStr] = useState('2')
+  const [bStr, setBStr] = useState('1')
+  const [cStr, setCStr] = useState('0')
 
-  const fnNames = { sin: '\\sin', cos: '\\cos', tan: '\\tan', csc: '\\csc', sec: '\\sec', cot: '\\cot' }
+  // Double Angle: daFn(2θ) + daLin·daRem(θ) + daCon = 0
+  const [daFn, setDaFn] = useState('cos')
+  const [daRem, setDaRem] = useState('cos')
+  const [daLinStr, setDaLinStr] = useState('1')
+  const [daConStr, setDaConStr] = useState('-2')
 
-  const solve = () => {
-    if (!valid) return null
-    let baseFn = fn, baseRhs = rhs
-    if (fn === 'csc') { baseFn = 'sin'; baseRhs = 1 / rhs }
-    else if (fn === 'sec') { baseFn = 'cos'; baseRhs = 1 / rhs }
-    else if (fn === 'cot') { baseFn = 'tan'; baseRhs = 1 / rhs }
-    if (!isFinite(baseRhs)) return { error: 'Value is out of domain for ' + fn }
+  const fnL = { sin: '\\sin', cos: '\\cos', tan: '\\tan', csc: '\\csc', sec: '\\sec', cot: '\\cot' }
 
-    const xRange = B * 2 * PI
+  // ── Linear trig solver (returns {solutions, refAngle, baseFn, baseRhs} or null) ──
+  const solveLinear = (f, rhsVal, B = 1) => {
+    let baseFn = f, baseRhs = rhsVal
+    if (f === 'csc') { baseFn = 'sin'; baseRhs = 1 / rhsVal }
+    else if (f === 'sec') { baseFn = 'cos'; baseRhs = 1 / rhsVal }
+    else if (f === 'cot') { baseFn = 'tan'; baseRhs = 1 / rhsVal }
+    if (!isFinite(baseRhs)) return null
+
     let refAngle = 0, bases = []
-
     if (baseFn === 'sin') {
-      if (Math.abs(baseRhs) > 1 + 1e-9) return { error: '|value| > 1 — sin has no solution outside [−1, 1]' }
-      const clamped = Math.max(-1, Math.min(1, baseRhs))
-      refAngle = Math.asin(Math.abs(clamped))
+      if (Math.abs(baseRhs) > 1 + 1e-9) return null
+      const cl = Math.max(-1, Math.min(1, baseRhs))
+      refAngle = Math.asin(Math.abs(cl))
       if (Math.abs(baseRhs) < 1e-9) bases = [0, PI]
-      else if (Math.abs(Math.abs(baseRhs) - 1) < 1e-9) bases = [clamped > 0 ? PI / 2 : 3 * PI / 2]
-      else if (clamped > 0) bases = [refAngle, PI - refAngle]
+      else if (Math.abs(Math.abs(baseRhs) - 1) < 1e-9) bases = [cl > 0 ? PI / 2 : 3 * PI / 2]
+      else if (cl > 0) bases = [refAngle, PI - refAngle]
       else bases = [PI + refAngle, 2 * PI - refAngle]
     } else if (baseFn === 'cos') {
-      if (Math.abs(baseRhs) > 1 + 1e-9) return { error: '|value| > 1 — cos has no solution outside [−1, 1]' }
-      const clamped = Math.max(-1, Math.min(1, baseRhs))
-      const x0 = Math.acos(clamped)
+      if (Math.abs(baseRhs) > 1 + 1e-9) return null
+      const cl = Math.max(-1, Math.min(1, baseRhs))
+      const x0 = Math.acos(cl)
       refAngle = Math.min(x0, PI - x0)
       bases = Math.abs(Math.sin(x0)) < 1e-9 ? [x0] : [x0, 2 * PI - x0]
     } else {
       const x0 = Math.atan(baseRhs)
       refAngle = Math.abs(x0)
-      const base = ((x0 % PI) + PI) % PI
-      bases = [base]
+      bases = [((x0 % PI) + PI) % PI]
     }
 
     const period = baseFn === 'tan' ? PI : 2 * PI
+    const xRange = B * 2 * PI
     const allX = []
     for (const base of bases) {
       for (let k = 0; ; k++) {
@@ -1068,87 +1077,375 @@ function TrigEquations() {
       }
     }
     allX.sort((a, b) => a - b)
-    const solutions = allX.map(x => x / B)
-    return { solutions, refAngle, baseFn, baseRhs, bases }
+    return { solutions: allX.map(x => x / B), refAngle, baseFn, baseRhs }
   }
 
-  const res = valid ? solve() : null
+  // ── Quadratic factoring info for a·u² + b·u + c = 0 ──────────
+  const factorInfo = (a, b, c) => {
+    if (Math.abs(c) < 1e-9) {
+      return { type: 'factor_out', roots: [0, -b / a] }
+    }
+    if (Math.abs(b) < 1e-9) {
+      const val = -c / a
+      if (val < -1e-9) return { type: 'no_real' }
+      return { type: 'sqrt', sq: Math.sqrt(Math.max(0, val)), roots: [Math.sqrt(Math.max(0, val)), -Math.sqrt(Math.max(0, val))] }
+    }
+    const disc = b * b - 4 * a * c
+    if (disc < -1e-9) return { type: 'no_real' }
 
-  const argLatex = B === 1 ? `\\theta` : `${B}\\theta`
-  const eqLatex = `${fnNames[fn]}(${argLatex}) = ${exact(rhs)}`
+    const r1 = (-b + Math.sqrt(Math.max(0, disc))) / (2 * a)
+    const r2 = (-b - Math.sqrt(Math.max(0, disc))) / (2 * a)
 
-  const quadrantNote = (baseFn, baseRhs) => {
-    if (baseFn === 'sin') return baseRhs >= 0 ? 'sin is positive in QI and QII' : 'sin is negative in QIII and QIV'
-    if (baseFn === 'cos') return baseRhs >= 0 ? 'cos is positive in QI and QIV' : 'cos is negative in QII and QIII'
-    return baseRhs >= 0 ? 'tan is positive in QI and QIII' : 'tan is negative in QII and QIV'
+    // Try integer factor pair (D1·u + N1)(D2·u + N2) = 0
+    const absA = Math.abs(a)
+    for (let d1 = 1; d1 <= absA; d1++) {
+      if (absA % d1 !== 0) continue
+      const d2 = absA / d1
+      for (const [sd1, sd2] of [[1, 1], [1, -1], [-1, 1], [-1, -1]]) {
+        const D1 = d1 * sd1, D2 = d2 * sd2
+        for (const [R1, R2] of [[r1, r2], [r2, r1]]) {
+          const N1 = Math.round(-D1 * R1), N2 = Math.round(-D2 * R2)
+          if (
+            Math.abs(D1 * D2 - a) < 0.5 &&
+            Math.abs(D1 * N2 + D2 * N1 - b) < 0.5 &&
+            Math.abs(N1 * N2 - c) < 0.5
+          ) {
+            return { type: 'factored', D1, N1, D2, N2, roots: [-N1 / D1, -N2 / D2] }
+          }
+        }
+      }
+    }
+    return { type: 'formula', roots: [r1, r2], disc }
   }
+
+  // Format (D·u + N) in LaTeX with trig symbol
+  const fmtFactor = (D, N, sym) => {
+    let s = D === 1 ? sym : D === -1 ? `-${sym}` : `${D}${sym}`
+    if (N > 0) s += ` + ${N}`
+    else if (N < 0) s += ` - ${Math.abs(N)}`
+    return s
+  }
+
+  // Equation LaTeX: a·sym2 + b·sym + c = 0
+  const eqLx = (a, b, c, sym, sym2) => {
+    let parts = []
+    if (a !== 0) parts.push(a === 1 ? sym2 : a === -1 ? `-${sym2}` : `${a}${sym2}`)
+    if (b !== 0) {
+      const sign = parts.length ? (b > 0 ? ' + ' : ' - ') : (b < 0 ? '-' : '')
+      const coef = Math.abs(b) === 1 ? '' : Math.abs(b)
+      parts.push(`${sign}${coef}${sym}`)
+    }
+    if (c !== 0) {
+      const sign = parts.length ? (c > 0 ? ' + ' : ' - ') : (c < 0 ? '-' : '')
+      parts.push(`${sign}${Math.abs(c)}`)
+    }
+    return (parts.join('') || '0') + ' = 0'
+  }
+
+  const qNote = (f, v) => {
+    if (f === 'sin') return v >= 0 ? 'sin > 0 in QI and QII' : 'sin < 0 in QIII and QIV'
+    if (f === 'cos') return v >= 0 ? 'cos > 0 in QI and QIV' : 'cos < 0 in QII and QIII'
+    return v >= 0 ? 'tan > 0 in QI and QIII' : 'tan < 0 in QII and QIV'
+  }
+
+  // Deduplicated sorted solution set from radians array
+  const dedupe = arr => [...new Set(arr.map(s => Math.round(s * 1e9) / 1e9))].sort((a, b) => a - b)
+
+  // Render one linear branch (fn(θ) = root) inside a quadratic solve
+  const Branch = ({ fnName, root }) => {
+    const res = solveLinear(fnName, root)
+    const rootLx = exact(root)
+    return (
+      <div style={{ marginLeft: 12, paddingLeft: 10, borderLeft: '2px solid #bfdbfe', marginTop: 6 }}>
+        <Line latex={`\\${fnName}\\theta = ${rootLx}`} />
+        {!res || res.solutions.length === 0
+          ? <Note text={`No solution — |${rootLx}| > 1 or out of domain`} />
+          : res.solutions.map((s, i) => <Line key={i} latex={`\\theta = ${radLatex(s)}`} />)
+        }
+      </div>
+    )
+  }
+
+  // ── Simple solver ─────────────────────────────────────────────
+  const B = parseFloat(multStr), rhs = parseFloat(rhsStr)
+  const simpleValid = isFinite(B) && B > 0 && isFinite(rhs)
+  const simpleRes = type === 'simple' && simpleValid ? solveLinear(fn, rhs, B) : null
+
+  // ── Quadratic solver ──────────────────────────────────────────
+  const qa = parseFloat(aStr), qb = parseFloat(bStr), qc = parseFloat(cStr)
+  const quadValid = type === 'quadratic' && isFinite(qa) && isFinite(qb) && isFinite(qc) && qa !== 0
+  const quadRes = (() => {
+    if (!quadValid) return null
+    const fi = factorInfo(qa, qb, qc)
+    if (fi.type === 'no_real') return { error: 'Discriminant < 0 — no real solutions' }
+    const roots = fi.roots
+    const allSols = dedupe(roots.flatMap(r => solveLinear(qFn, r)?.solutions || []))
+    return { fi, roots, allSols }
+  })()
+
+  // ── Double angle solver ───────────────────────────────────────
+  const daLin = parseFloat(daLinStr), daCon = parseFloat(daConStr)
+  const daValid = type === 'dblangle' && isFinite(daLin) && isFinite(daCon)
+  const daRes = (() => {
+    if (!daValid) return null
+    if (daFn === 'sin') {
+      // sin(2θ) = 2sinθcosθ → factors into product
+      const f1Fn = daRem, f2Fn = daRem === 'sin' ? 'cos' : 'sin'
+      const f1Res = solveLinear(f1Fn, 0)
+      const f2Rhs = -daLin / 2
+      const f2Res = solveLinear(f2Fn, f2Rhs)
+      const allSols = dedupe([...(f1Res?.solutions || []), ...(f2Res?.solutions || [])])
+      return { type: 'sin2_product', f1Fn, f1Res, f2Fn, f2Rhs, f2Res, allSols }
+    }
+    // cos(2θ): choose identity based on remaining trig
+    let dqa, dqb, dqc, subFn, identLx
+    if (daRem === 'cos') {
+      dqa = 2; dqb = daLin; dqc = daCon - 1; subFn = 'cos'
+      identLx = '\\cos(2\\theta) = 2\\cos^2\\!\\theta - 1'
+    } else {
+      dqa = -2; dqb = daLin; dqc = daCon + 1; subFn = 'sin'
+      identLx = '\\cos(2\\theta) = 1 - 2\\sin^2\\!\\theta'
+    }
+    const fi = factorInfo(dqa, dqb, dqc)
+    if (fi.type === 'no_real') return { error: 'No real solutions after substitution' }
+    const allSols = dedupe(fi.roots.flatMap(r => solveLinear(subFn, r)?.solutions || []))
+    return { type: 'cos2_quad', fi, identLx, subFn, dqa, dqb, dqc, allSols }
+  })()
+
+  const allSolsForCircle = (() => {
+    if (type === 'simple') return simpleRes?.solutions || []
+    if (type === 'quadratic') return quadRes?.allSols || []
+    if (type === 'dblangle') return daRes?.allSols || []
+    return []
+  })()
 
   return (
     <div className="trig-solver">
       <h2 className="trig-solver-title">Solve Trig Equations on [0, 2π)</h2>
-      <Explain text="Enter any trig function, angle multiplier, and right-hand side value. The solver finds all solutions in [0, 2π) by finding the reference angle, identifying which quadrants give the right sign, then generating all solutions." />
+      <Explain text="Choose the equation type below. The solver shows full paper-style work: factoring, identity substitution, quadrant logic, and all solutions in [0, 2π)." />
+
+      <div className="trig-type-tabs">
+        {[['simple','Simple  f(Bθ) = c'], ['quadratic','Quadratic  af² + bf + c = 0'], ['dblangle','Double Angle cos/sin(2θ)']].map(([v, label]) => (
+          <button key={v} className={`trig-type-tab${type === v ? ' active' : ''}`} onClick={() => setType(v)}>{label}</button>
+        ))}
+      </div>
+
       <div className="trig-solver-body">
         <div>
-          <div className="trig-inputs">
-            <div className="trig-input-group">
-              <label>Function</label>
-              <select className="trig-select" value={fn} onChange={e => setFn(e.target.value)}>
-                {['sin','cos','tan','csc','sec','cot'].map(f => <option key={f} value={f}>{f}</option>)}
-              </select>
+
+          {/* ── Simple ─────────────────────────────────────────── */}
+          {type === 'simple' && (<>
+            <div className="trig-inputs">
+              <div className="trig-input-group">
+                <label>Function</label>
+                <select className="trig-select" value={fn} onChange={e => setFn(e.target.value)}>
+                  {['sin','cos','tan','csc','sec','cot'].map(f => <option key={f} value={f}>{f}</option>)}
+                </select>
+              </div>
+              <div className="trig-input-group">
+                <label>Multiplier B</label>
+                <input className="trig-input" value={multStr} onChange={e => setMultStr(e.target.value)}
+                  placeholder="1, 2…" style={{ width: 70 }} />
+              </div>
+              <div className="trig-input-group">
+                <label>= value</label>
+                <input className="trig-input" value={rhsStr} onChange={e => setRhsStr(e.target.value)}
+                  placeholder="-1, 0.5…" style={{ width: 90 }} />
+              </div>
             </div>
-            <div className="trig-input-group">
-              <label>Multiplier B</label>
-              <input className="trig-input" value={multStr} onChange={e => setMultStr(e.target.value)}
-                placeholder="e.g. 1, 2" style={{ width: 70 }} />
-            </div>
-            <div className="trig-input-group">
-              <label>= (RHS value)</label>
-              <input className="trig-input" value={rhsStr} onChange={e => setRhsStr(e.target.value)}
-                placeholder="e.g. -1, 0.5" style={{ width: 100 }} />
-            </div>
-          </div>
-          <div className="trig-hint">
-            Solves <strong>{fn}({B === 1 ? 'θ' : `${B}θ`}) = {rhsStr}</strong> for all θ in [0, 2π).
-            Use B &gt; 1 for problems like tan(2θ) = −1.
-          </div>
-          {res?.error && <div className="trig-warning">{res.error}</div>}
-          {res && !res.error && (
-            <div className="trig-steps">
+            <div className="trig-hint">Solves <strong>{fn}({B === 1 ? 'θ' : `${B}θ`}) = {rhsStr}</strong> on [0, 2π)</div>
+            {simpleRes && !simpleRes.error && (<div className="trig-steps">
               <Step num={1} title="Write the equation">
-                <Line latex={eqLatex} />
-                {fn !== res.baseFn && (
-                  <Line latex={`\\Rightarrow \\${res.baseFn}(${argLatex}) = ${exact(res.baseRhs)}`} />
-                )}
+                <Line latex={`${fnL[fn]}(${B === 1 ? '\\theta' : `${B}\\theta`}) = ${exact(rhs)}`} />
+                {fn !== simpleRes.baseFn && <Line latex={`\\Rightarrow \\${simpleRes.baseFn}(${B === 1 ? '\\theta' : `${B}\\theta`}) = ${exact(simpleRes.baseRhs)}`} />}
               </Step>
-              {B > 1 && (
-                <Step num={2} title={`Let x = ${B}θ, solve on [0, ${B === 2 ? '4' : fmt(B,1) + '·'}π)`}>
-                  <Line latex={`\\${res.baseFn}(x) = ${exact(res.baseRhs)}, \\quad x \\in [0,\\ ${B * 2}\\pi)`} />
-                  <Note text="We expand the interval for x so that after dividing by B, θ covers exactly one full revolution." />
-                </Step>
-              )}
-              <Step num={B > 1 ? 3 : 2} title="Find the reference angle">
-                <Line latex={`\\theta_R = ${radLatex(res.refAngle)} \\approx ${fmt(toDeg(res.refAngle), 2)}^\\circ`} />
-                <Note text={quadrantNote(res.baseFn, res.baseRhs)} />
+              {B > 1 && (<Step num={2} title={`Let x = ${B}θ, solve x ∈ [0, ${B * 2}π)`}>
+                <Line latex={`\\${simpleRes.baseFn}(x) = ${exact(simpleRes.baseRhs)},\\quad x \\in [0,\\ ${B * 2}\\pi)`} />
+                <Note text="Expanding the interval ensures dividing by B gives a full revolution." />
+              </Step>)}
+              <Step num={B > 1 ? 3 : 2} title="Find reference angle">
+                <Line latex={`\\theta_R = ${radLatex(simpleRes.refAngle)} \\approx ${fmt(toDeg(simpleRes.refAngle), 2)}^\\circ`} />
+                <Note text={qNote(simpleRes.baseFn, simpleRes.baseRhs)} />
               </Step>
-              <Step num={B > 1 ? 4 : 3} title={B > 1 ? 'Solutions for x, then divide by B' : 'All solutions'}>
-                {res.solutions.length === 0
-                  ? <Line latex="\\text{No solution in } [0, 2\\pi)" />
-                  : res.solutions.map((s, i) => (
-                    <Line key={i} latex={`\\theta = ${radLatex(s)} \\approx ${fmt(toDeg(s), 2)}^\\circ`} />
-                  ))
-                }
+              <Step num={B > 1 ? 4 : 3} title="All solutions">
+                {simpleRes.solutions.length === 0
+                  ? <Line latex="\\text{No solution in } [0,2\\pi)" />
+                  : simpleRes.solutions.map((s, i) => <Line key={i} latex={`\\theta = ${radLatex(s)} \\approx ${fmt(toDeg(s), 1)}^\\circ`} />)}
               </Step>
-              <AnswerBox latex={res.solutions.length === 0
-                ? '\\text{No solution}'
-                : `\\theta = ${res.solutions.map(s => radLatex(s)).join(',\\ ')}`
-              } />
+              <AnswerBox latex={simpleRes.solutions.length === 0 ? '\\text{No solution}'
+                : `\\theta = ${simpleRes.solutions.map(s => radLatex(s)).join(',\\ ')}`} />
+            </div>)}
+          </>)}
+
+          {/* ── Quadratic ──────────────────────────────────────── */}
+          {type === 'quadratic' && (<>
+            <div className="trig-inputs">
+              <div className="trig-input-group">
+                <label>Function f</label>
+                <select className="trig-select" value={qFn} onChange={e => setQFn(e.target.value)}>
+                  {['sin','cos','tan'].map(f => <option key={f} value={f}>{f}</option>)}
+                </select>
+              </div>
+              <div className="trig-input-group">
+                <label>a (f² coeff)</label>
+                <input className="trig-input" value={aStr} onChange={e => setAStr(e.target.value)} style={{ width: 60 }} />
+              </div>
+              <div className="trig-input-group">
+                <label>b (f coeff)</label>
+                <input className="trig-input" value={bStr} onChange={e => setBStr(e.target.value)} style={{ width: 60 }} />
+              </div>
+              <div className="trig-input-group">
+                <label>c (constant)</label>
+                <input className="trig-input" value={cStr} onChange={e => setCStr(e.target.value)} style={{ width: 60 }} />
+              </div>
             </div>
-          )}
+            <div className="trig-hint">
+              Enters <strong>a·{qFn}²θ + b·{qFn}θ + c = 0</strong>.
+              Examples: 2cos²θ+cosθ=0 → a=2,b=1,c=0 &nbsp;·&nbsp; 2sin²θ−sinθ−1=0 → a=2,b=−1,c=−1
+            </div>
+            {quadRes?.error && <div className="trig-warning">{quadRes.error}</div>}
+            {quadRes && !quadRes.error && (() => {
+              const { fi } = quadRes
+              const fSym = `\\${qFn}\\theta`, fSym2 = `\\${qFn}^2\\!\\theta`
+              const uSym = 'u', uSym2 = 'u^2'
+              let sn = 1
+              return (<div className="trig-steps">
+                <Step num={sn++} title="Write the equation">
+                  <Line latex={eqLx(qa, qb, qc, fSym, fSym2)} />
+                </Step>
+                <Step num={sn++} title={`Let u = ${qFn}(θ) — write as a quadratic in u`}>
+                  <Line latex={eqLx(qa, qb, qc, uSym, uSym2)} />
+                </Step>
+
+                {fi.type === 'factor_out' && (<Step num={sn++} title="Factor: c = 0, so factor out u">
+                  <Line latex={`u(${eqLx(qa, 0, qb, uSym, '').replace(' = 0','')}) = 0`} />
+                  <Line latex={`u = 0 \\quad \\text{or} \\quad ${qa !== 1 ? qa : ''}u ${qb >= 0 ? '+' : ''}${qb} = 0`} />
+                </Step>)}
+
+                {fi.type === 'sqrt' && (<Step num={sn++} title="Solve by square root (b = 0)">
+                  <Line latex={`u^2 = ${exact(-qc / qa)}`} />
+                  <Line latex={`u = \\pm ${exact(fi.sq)}`} />
+                </Step>)}
+
+                {fi.type === 'factored' && (<Step num={sn++} title="Factor the quadratic (AC method)">
+                  <Line latex={`(${fmtFactor(fi.D1, fi.N1, uSym)})(${fmtFactor(fi.D2, fi.N2, uSym)}) = 0`} />
+                  <Line latex={`u = ${exact(-fi.N1 / fi.D1)} \\quad \\text{or} \\quad u = ${exact(-fi.N2 / fi.D2)}`} />
+                </Step>)}
+
+                {fi.type === 'formula' && (<Step num={sn++} title="Quadratic formula">
+                  <Line latex={`u = \\dfrac{${-qb} \\pm \\sqrt{${fmt(fi.disc, 4)}}}{${2 * qa}}`} />
+                  <Line latex={`u \\approx ${exact(fi.roots[0])} \\quad \\text{or} \\quad u \\approx ${exact(fi.roots[1])}`} />
+                </Step>)}
+
+                <Step num={sn++} title={`Back-substitute: solve ${qFn}(θ) = u for each root`}>
+                  {fi.roots.map((r, i) => <Branch key={i} fnName={qFn} root={r} />)}
+                </Step>
+                <AnswerBox latex={quadRes.allSols.length === 0 ? '\\text{No solution in }[0,2\\pi)'
+                  : `\\theta = ${quadRes.allSols.map(s => radLatex(s)).join(',\\ ')}`} />
+              </div>)
+            })()}
+          </>)}
+
+          {/* ── Double Angle ────────────────────────────────────── */}
+          {type === 'dblangle' && (<>
+            <div className="trig-inputs">
+              <div className="trig-input-group">
+                <label>Double angle</label>
+                <select className="trig-select" value={daFn} onChange={e => setDaFn(e.target.value)}>
+                  <option value="cos">cos(2θ)</option>
+                  <option value="sin">sin(2θ)</option>
+                </select>
+              </div>
+              <div className="trig-input-group">
+                <label>+ b·</label>
+                <select className="trig-select" value={daRem} onChange={e => setDaRem(e.target.value)}>
+                  <option value="cos">cos θ</option>
+                  <option value="sin">sin θ</option>
+                </select>
+              </div>
+              <div className="trig-input-group">
+                <label>b =</label>
+                <input className="trig-input" value={daLinStr} onChange={e => setDaLinStr(e.target.value)} style={{ width: 60 }} />
+              </div>
+              <div className="trig-input-group">
+                <label>c =</label>
+                <input className="trig-input" value={daConStr} onChange={e => setDaConStr(e.target.value)} style={{ width: 60 }} />
+              </div>
+            </div>
+            <div className="trig-hint">
+              Equation: <strong>{daFn}(2θ) + {daLinStr}·{daRem}(θ) + {daConStr} = 0</strong>.
+              Example: cos(2θ)+cosθ−2=0 → fn=cos, rem=cos, b=1, c=−2
+            </div>
+            {daRes?.error && <div className="trig-warning">{daRes.error}</div>}
+
+            {daRes && !daRes.error && daRes.type === 'sin2_product' && (() => {
+              let sn = 1
+              return (<div className="trig-steps">
+                <Step num={sn++} title="Apply identity: sin(2θ) = 2sinθcosθ">
+                  <Line latex={`2\\sin\\theta\\cos\\theta ${daLin >= 0 ? '+' : ''}${daLin}\\${daRem}\\theta = 0`} />
+                </Step>
+                <Step num={sn++} title={`Factor out ${daRem}(θ)`}>
+                  <Line latex={`\\${daRem}\\theta\\left(2\\${daRes.f2Fn}\\theta ${daLin >= 0 ? '+' : ''}${daLin}\\right) = 0`} />
+                </Step>
+                <Step num={sn++} title="Set each factor equal to zero">
+                  <Note text={`Factor 1: ${daRes.f1Fn}(θ) = 0`} />
+                  {daRes.f1Res?.solutions.map((s, i) => <Line key={i} latex={`\\theta = ${radLatex(s)}`} />)}
+                  <Note text={`Factor 2: 2·${daRes.f2Fn}(θ) + ${daLin} = 0 → ${daRes.f2Fn}(θ) = ${exact(daRes.f2Rhs)}`} />
+                  {!daRes.f2Res || daRes.f2Res.solutions.length === 0
+                    ? <Note text={`No solution — |${exact(daRes.f2Rhs)}| > 1`} />
+                    : daRes.f2Res.solutions.map((s, i) => <Line key={i} latex={`\\theta = ${radLatex(s)}`} />)}
+                </Step>
+                <AnswerBox latex={daRes.allSols.length === 0 ? '\\text{No solution}'
+                  : `\\theta = ${daRes.allSols.map(s => radLatex(s)).join(',\\ ')}`} />
+              </div>)
+            })()}
+
+            {daRes && !daRes.error && daRes.type === 'cos2_quad' && (() => {
+              const { fi, identLx, subFn, dqa, dqb, dqc } = daRes
+              const fSym = `\\${subFn}\\theta`, fSym2 = `\\${subFn}^2\\!\\theta`
+              let sn = 1
+              return (<div className="trig-steps">
+                <Step num={sn++} title={`Apply identity: cos(2θ) in terms of ${subFn}`}>
+                  <Line latex={identLx} />
+                  <Line latex={`(${identLx.split('=')[1].trim()}) ${daLin >= 0 ? '+' : ''}${daLin !== 0 ? `${daLin}\\${subFn}\\theta` : ''} ${daCon >= 0 ? '+' : ''}${daCon !== 0 ? daCon : ''} = 0`} />
+                </Step>
+                <Step num={sn++} title="Simplify — collect like terms">
+                  <Line latex={eqLx(dqa, dqb, dqc, fSym, fSym2)} />
+                </Step>
+                <Step num={sn++} title={`Let u = ${subFn}(θ)`}>
+                  <Line latex={eqLx(dqa, dqb, dqc, 'u', 'u^2')} />
+                </Step>
+
+                {fi.type === 'factor_out' && (<Step num={sn++} title="Factor (c = 0)">
+                  <Line latex={`u(${dqa !== 1 ? dqa : ''}u ${dqb >= 0 ? '+' : ''}${dqb}) = 0`} />
+                  <Line latex={`u = 0 \\quad \\text{or} \\quad u = ${exact(-dqb / dqa)}`} />
+                </Step>)}
+                {fi.type === 'sqrt' && (<Step num={sn++} title="Square root">
+                  <Line latex={`u^2 = ${exact(-dqc / dqa)} \\Rightarrow u = \\pm ${exact(fi.sq)}`} />
+                </Step>)}
+                {fi.type === 'factored' && (<Step num={sn++} title="Factor (AC method)">
+                  <Line latex={`(${fmtFactor(fi.D1, fi.N1, 'u')})(${fmtFactor(fi.D2, fi.N2, 'u')}) = 0`} />
+                  <Line latex={`u = ${exact(-fi.N1 / fi.D1)} \\quad \\text{or} \\quad u = ${exact(-fi.N2 / fi.D2)}`} />
+                </Step>)}
+                {fi.type === 'formula' && (<Step num={sn++} title="Quadratic formula">
+                  <Line latex={`u = \\dfrac{${-dqb} \\pm \\sqrt{${fmt(fi.disc, 4)}}}{${2 * dqa}}`} />
+                  <Line latex={`u \\approx ${exact(fi.roots[0])} \\quad \\text{or} \\quad u \\approx ${exact(fi.roots[1])}`} />
+                </Step>)}
+
+                <Step num={sn++} title={`Back-substitute: solve ${subFn}(θ) = u`}>
+                  {fi.roots.map((r, i) => <Branch key={i} fnName={subFn} root={r} />)}
+                </Step>
+                <AnswerBox latex={daRes.allSols.length === 0 ? '\\text{No solution in }[0,2\\pi)'
+                  : `\\theta = ${daRes.allSols.map(s => radLatex(s)).join(',\\ ')}`} />
+              </div>)
+            })()}
+          </>)}
+
         </div>
       </div>
       <UnitCircleSVG
-        angleDeg={res?.solutions?.[0] ? toDeg(res.solutions[0]) : 0}
-        solutions={res?.solutions?.map((s, i) => ({ deg: toDeg(s), color: i % 2 === 0 ? '#059669' : '#7c3aed' })) ?? []}
+        angleDeg={allSolsForCircle[0] ? toDeg(allSolsForCircle[0]) : 0}
+        solutions={allSolsForCircle.map((s, i) => ({ deg: toDeg(s), color: ['#059669','#7c3aed','#dc2626','#d97706'][i % 4] }))}
         showPoint={false}
       />
     </div>
