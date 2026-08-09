@@ -29,8 +29,9 @@ function gcd(a, b) {
 }
 
 function fmt(n, d = 4) {
-  if (!isFinite(n)) return '—'
-  const r = parseFloat(n.toFixed(d))
+  const num = Number(n)
+  if (!isFinite(num)) return '—'
+  const r = parseFloat(num.toFixed(d))
   return String(r)
 }
 
