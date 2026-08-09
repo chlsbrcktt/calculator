@@ -261,6 +261,16 @@
   margin-top: 4px;
 }
 
+.trig-unit-circle {
+  display: block;
+  width: min(100%, 540px);
+  height: auto;
+  margin: 20px auto 4px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #fafbfc;
+}
+
 /* ─── Identity reference box ──────────────────────────────────────────────── */
 .trig-identity-box {
   flex-shrink: 0;

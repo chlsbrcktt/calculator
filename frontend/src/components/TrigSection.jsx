@@ -145,59 +145,135 @@ function fracLatex(num, den) {
 // ─── SVG Components ────────────────────────────────────────────────────────────
 
 function UnitCircleSVG({ angleDeg, showPoint = true, solutions = null }) {
-  const cx = 120, cy = 120, r = 85
+  const W = 800, H = 870
+  const cx = 400, cy = 430, r = 200
+  const labelR = 220, boxR = 320, bW = 76, bH = 40
+
   const a = toRad(angleDeg || 0)
   const px = cx + r * Math.cos(a)
   const py = cy - r * Math.sin(a)
+  const normDeg = ((angleDeg % 360) + 360) % 360
 
-  const arcPath = () => {
-    const arcR = 28
-    if (solutions) return null
+  const ANGLES = [
+    { d: 0,   ds: '0°',    rs: '0, 2π',   xs: '1',      ys: '0',      ts: '0' },
+    { d: 30,  ds: '30°',   rs: 'π/6',     xs: '√3/2',   ys: '1/2',    ts: '√3/3' },
+    { d: 45,  ds: '45°',   rs: 'π/4',     xs: '√2/2',   ys: '√2/2',   ts: '1' },
+    { d: 60,  ds: '60°',   rs: 'π/3',     xs: '1/2',    ys: '√3/2',   ts: '√3' },
+    { d: 90,  ds: '90°',   rs: 'π/2',     xs: '0',      ys: '1',      ts: 'undef.' },
+    { d: 120, ds: '120°',  rs: '2π/3',    xs: '−1/2',   ys: '√3/2',   ts: '−√3' },
+    { d: 135, ds: '135°',  rs: '3π/4',    xs: '−√2/2',  ys: '√2/2',   ts: '−1' },
+    { d: 150, ds: '150°',  rs: '5π/6',    xs: '−√3/2',  ys: '1/2',    ts: '−√3/3' },
+    { d: 180, ds: '180°',  rs: 'π',       xs: '−1',     ys: '0',      ts: '0' },
+    { d: 210, ds: '210°',  rs: '7π/6',    xs: '−√3/2',  ys: '−1/2',   ts: '√3/3' },
+    { d: 225, ds: '225°',  rs: '5π/4',    xs: '−√2/2',  ys: '−√2/2',  ts: '1' },
+    { d: 240, ds: '240°',  rs: '4π/3',    xs: '−1/2',   ys: '−√3/2',  ts: '√3' },
+    { d: 270, ds: '270°',  rs: '3π/2',    xs: '0',      ys: '−1',     ts: 'undef.' },
+    { d: 300, ds: '300°',  rs: '5π/3',    xs: '1/2',    ys: '−√3/2',  ts: '−√3' },
+    { d: 315, ds: '315°',  rs: '7π/4',    xs: '√2/2',   ys: '−√2/2',  ts: '−1' },
+    { d: 330, ds: '330°',  rs: '11π/6',   xs: '√3/2',   ys: '−1/2',   ts: '−√3/3' },
+  ]
+
+  const arcR = 52
+  const arcPath = (() => {
+    if (solutions || !showPoint || normDeg < 0.5) return null
     const x1 = cx + arcR
     const x2 = cx + arcR * Math.cos(a)
     const y2 = cy - arcR * Math.sin(a)
-    const largeArc = (((angleDeg % 360) + 360) % 360) > 180 ? 1 : 0
-    const sweep = 0
-    if (Math.abs((angleDeg % 360 + 360) % 360) < 0.5) return null
-    return `M ${x1} ${cy} A ${arcR} ${arcR} 0 ${largeArc} ${sweep} ${x2} ${y2}`
-  }
+    const largeArc = normDeg > 180 ? 1 : 0
+    return `M ${x1} ${cy} A ${arcR} ${arcR} 0 ${largeArc} 0 ${x2} ${y2}`
+  })()
 
-  const pts = solutions || (showPoint ? [{ deg: angleDeg, color: '#059669' }] : [])
+  const pts = solutions || (showPoint ? [{ deg: angleDeg, color: '#2563eb' }] : [])
 
   return (
-    <svg viewBox="0 0 240 240" className="trig-diagram">
-      {/* axes */}
-      <line x1="20" y1={cy} x2="220" y2={cy} stroke="#94a3b8" strokeWidth="1.5" />
-      <line x1={cx} y1="20" x2={cx} y2="220" stroke="#94a3b8" strokeWidth="1.5" />
-      <text x="215" y={cy + 4} fontSize="11" fill="#94a3b8">x</text>
-      <text x={cx + 4} y="18" fontSize="11" fill="#94a3b8">y</text>
-      {/* circle */}
-      <circle cx={cx} cy={cy} r={r} fill="none" stroke="#cbd5e1" strokeWidth="1.5" />
-      {/* arc */}
-      {arcPath() && <path d={arcPath()} fill="none" stroke="#3b82f6" strokeWidth="2" />}
-      {/* terminal ray */}
-      {showPoint && (
-        <line x1={cx} y1={cy} x2={px} y2={py} stroke="#2563eb" strokeWidth="2" />
+    <svg viewBox={`0 0 ${W} ${H}`} className="trig-unit-circle">
+      {/* Quadrant watermarks */}
+      <text x={cx + 80} y={cy - 70} textAnchor="middle" fontSize="30" fill="#f1f5f9" fontWeight="800" fontFamily="serif">I</text>
+      <text x={cx - 80} y={cy - 70} textAnchor="middle" fontSize="30" fill="#f1f5f9" fontWeight="800" fontFamily="serif">II</text>
+      <text x={cx - 80} y={cy + 100} textAnchor="middle" fontSize="30" fill="#f1f5f9" fontWeight="800" fontFamily="serif">III</text>
+      <text x={cx + 80} y={cy + 100} textAnchor="middle" fontSize="30" fill="#f1f5f9" fontWeight="800" fontFamily="serif">IV</text>
+
+      {/* Axes */}
+      <line x1="22" y1={cy} x2={W - 22} y2={cy} stroke="#94a3b8" strokeWidth="2" />
+      <line x1={cx} y1={H - 44} x2={cx} y2="22" stroke="#94a3b8" strokeWidth="2" />
+      <polygon points={`${W - 22},${cy} ${W - 34},${cy - 5} ${W - 34},${cy + 5}`} fill="#94a3b8" />
+      <polygon points={`${cx},22 ${cx - 5},34 ${cx + 5},34`} fill="#94a3b8" />
+      <text x={W - 12} y={cy + 6} textAnchor="middle" fontSize="18" fill="#64748b" fontWeight="700">x</text>
+      <text x={cx + 16} y="20" textAnchor="middle" fontSize="18" fill="#64748b" fontWeight="700">y</text>
+      <text x={cx + r + 6} y={cy - 10} fontSize="13" fill="#94a3b8">1</text>
+      <text x={cx + 6} y={cy - r - 8} fontSize="13" fill="#94a3b8">1</text>
+
+      {/* Circle */}
+      <circle cx={cx} cy={cy} r={r} fill="none" stroke="#cbd5e1" strokeWidth="2.5" />
+
+      {/* Standard angle annotations */}
+      {ANGLES.map(item => {
+        const rad = toRad(item.d)
+        const dx = Math.cos(rad)
+        const dy = -Math.sin(rad)
+        const isActive = Math.abs(normDeg - item.d) < 0.5 && showPoint && !solutions
+
+        const tk1x = cx + (r - 7) * dx, tk1y = cy + (r - 7) * dy
+        const tk2x = cx + (r + 7) * dx, tk2y = cy + (r + 7) * dy
+
+        const lx = cx + labelR * dx
+        const ly = cy + labelR * dy
+        const ta = dx > 0.2 ? 'start' : dx < -0.2 ? 'end' : 'middle'
+
+        const bx = cx + boxR * dx
+        const by = cy + boxR * dy
+        const brx = bx - bW / 2
+        const bry = by - bH / 2
+
+        return (
+          <g key={item.d}>
+            <line x1={tk1x} y1={tk1y} x2={tk2x} y2={tk2y} stroke={isActive ? '#2563eb' : '#94a3b8'} strokeWidth={isActive ? 2.5 : 1.5} />
+            <text x={lx} y={ly - 4} textAnchor={ta} fontSize="12" fill={isActive ? '#1d4ed8' : '#1e293b'} fontWeight="700">{item.ds}</text>
+            <text x={lx} y={ly + 10} textAnchor={ta} fontSize="11" fill={isActive ? '#4f46e5' : '#6366f1'}>{item.rs}</text>
+            <rect x={brx} y={bry} width={bW} height={bH} rx="4"
+              fill={isActive ? '#dbeafe' : '#eff6ff'}
+              stroke={isActive ? '#3b82f6' : '#bfdbfe'}
+              strokeWidth={isActive ? 1.5 : 1} />
+            <text x={bx} y={bry + 15} textAnchor="middle" fontSize="10" fill="#1e293b" fontWeight="500">({item.xs}, {item.ys})</text>
+            <text x={bx} y={bry + 29} textAnchor="middle" fontSize="10" fill="#7c3aed">tan = {item.ts}</text>
+          </g>
+        )
+      })}
+
+      {/* Angle arc */}
+      {arcPath && <path d={arcPath} fill="none" stroke="#3b82f6" strokeWidth="2.5" />}
+
+      {/* Terminal ray */}
+      {showPoint && !solutions && (
+        <line x1={cx} y1={cy} x2={px} y2={py} stroke="#2563eb" strokeWidth="2.5" />
       )}
-      {/* solutions */}
+
+      {/* All dots */}
       {pts.map((p, i) => {
         const pa = toRad(p.deg)
         const spx = cx + r * Math.cos(pa)
         const spy = cy - r * Math.sin(pa)
-        return <circle key={i} cx={spx} cy={spy} r={5} fill={p.color || '#059669'} />
+        return <circle key={i} cx={spx} cy={spy} r={8} fill={p.color || '#2563eb'} />
       })}
-      {/* point coordinates */}
-      {showPoint && (
+
+      {/* Perpendicular dashes for active point */}
+      {showPoint && !solutions && (
         <>
-          <line x1={px} y1={py} x2={px} y2={cy} stroke="#10b981" strokeWidth="1" strokeDasharray="4 3" />
-          <line x1={cx} y1={cy} x2={px} y2={cy} stroke="#f59e0b" strokeWidth="1" strokeDasharray="4 3" />
-          <circle cx={px} cy={py} r={5} fill="#2563eb" />
-          <text x={px + 7} y={py - 5} fontSize="10" fill="#1e293b">({exact(Math.cos(a))}, {exact(Math.sin(a))})</text>
+          <line x1={px} y1={py} x2={px} y2={cy} stroke="#10b981" strokeWidth="1.5" strokeDasharray="6 4" />
+          <line x1={cx} y1={cy} x2={px} y2={cy} stroke="#f59e0b" strokeWidth="1.5" strokeDasharray="6 4" />
         </>
       )}
-      {/* +1 labels */}
-      <text x={cx + r + 3} y={cy - 3} fontSize="9" fill="#94a3b8">1</text>
-      <text x={cx + 3} y={cy - r - 2} fontSize="9" fill="#94a3b8">1</text>
+
+      {/* θ label near arc */}
+      {arcPath && (
+        <text x={cx + (arcR + 18) * Math.cos(a / 2)} y={cy - (arcR + 18) * Math.sin(a / 2)}
+          textAnchor="middle" fontSize="14" fill="#2563eb" fontWeight="600">θ</text>
+      )}
+
+      {/* Legend */}
+      <text x={cx} y={H - 26} textAnchor="middle" fontSize="14" fill="#64748b">
+        cos θ = x  ·  sin θ = y  ·  tan θ = y/x  (for any point on the unit circle)
+      </text>
     </svg>
   )
 }
@@ -402,8 +478,8 @@ function DegRadConverter() {
           </div>
           <div className="trig-steps">{steps}</div>
         </div>
-        <UnitCircleSVG angleDeg={angleDeg} />
       </div>
+      <UnitCircleSVG angleDeg={angleDeg} />
     </div>
   )
 }
@@ -459,8 +535,8 @@ function StandardPosition() {
             </div>
           )}
         </div>
-        <UnitCircleSVG angleDeg={angleDeg} />
       </div>
+      <UnitCircleSVG angleDeg={angleDeg} />
     </div>
   )
 }
@@ -705,8 +781,8 @@ function EvaluateExact() {
             </div>
           )}
         </div>
-        <UnitCircleSVG angleDeg={angleDeg} />
       </div>
+      <UnitCircleSVG angleDeg={angleDeg} />
     </div>
   )
 }
@@ -847,8 +923,8 @@ function InverseTrig() {
             </div>
           )}
         </div>
-        {ok && <UnitCircleSVG angleDeg={resultDeg} />}
       </div>
+      {ok && <UnitCircleSVG angleDeg={resultDeg} />}
     </div>
   )
 }
@@ -1069,12 +1145,12 @@ function TrigEquations() {
             </div>
           )}
         </div>
-        <UnitCircleSVG
-          angleDeg={res?.solutions?.[0] ? toDeg(res.solutions[0]) : 0}
-          solutions={res?.solutions?.map((s, i) => ({ deg: toDeg(s), color: i % 2 === 0 ? '#059669' : '#7c3aed' })) ?? []}
-          showPoint={false}
-        />
       </div>
+      <UnitCircleSVG
+        angleDeg={res?.solutions?.[0] ? toDeg(res.solutions[0]) : 0}
+        solutions={res?.solutions?.map((s, i) => ({ deg: toDeg(s), color: i % 2 === 0 ? '#059669' : '#7c3aed' })) ?? []}
+        showPoint={false}
+      />
     </div>
   )
 }
@@ -1234,8 +1310,8 @@ function SumDifference() {
             </div>
           )}
         </div>
-        {valid && <UnitCircleSVG angleDeg={combNorm} />}
       </div>
+      {valid && <UnitCircleSVG angleDeg={combNorm} />}
     </div>
   )
 }
